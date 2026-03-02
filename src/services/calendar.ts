@@ -235,7 +235,6 @@ export async function listRoomEvents(roomId: string, date: Date): Promise<Bookin
     timeMax: endOfDay.toISOString(),
     singleEvents: true,
     orderBy: 'startTime',
-    privateExtendedProperty: ['createdBy=slack-room-bot'],
   });
 
   const events = response.data.items ?? [];

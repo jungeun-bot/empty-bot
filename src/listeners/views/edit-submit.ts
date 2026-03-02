@@ -33,11 +33,16 @@ export function registerEditSubmit(app: App): void {
       try {
         const userInfo = await client.users.info({ user: body.user.id });
         organizerEmail = userInfo.user?.profile?.email ?? '';
-      } catch {
-        // 이메일 조회 실패
+      } catch (emailError) {
+        logger.error('사용자 이메일 조회 실패:', emailError);
+        await client.views.update({
+          view_id: body.view?.id ?? '',
+          view: buildErrorView('⚠️ 사용자 정보를 조회할 수 없습니다. 잠시 후 다시 시도해주세요.'),
+        });
+        return;
       }
 
-      const date = new Date(dateStr + 'T00:00:00');
+      const date = new Date(dateStr + 'T00:00:00+09:00');
       const results = await Promise.allSettled(
         ROOMS.map(room => listRoomEvents(room.id, date))
       );
@@ -51,11 +56,13 @@ export function registerEditSubmit(app: App): void {
             booking.roomId = room.id;
             allBookings.push(booking);
           }
+        } else {
+          logger.warn(`회의실 ${ROOMS[i]!.name} 예약 조회 실패:`, result.reason);
         }
       }
 
       // 본인 예약만 필터
-      const myBookings = allBookings.filter(b => b.organizer === organizerEmail);
+      const myBookings = allBookings.filter(b => b.organizer.toLowerCase() === organizerEmail.toLowerCase());
       myBookings.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
 
       if (myBookings.length === 0) {
@@ -107,7 +114,7 @@ export function registerEditSubmit(app: App): void {
         return;
       }
 
-      const date = new Date(dateStr + 'T00:00:00');
+      const date = new Date(dateStr + 'T00:00:00+09:00');
       const events = await listRoomEvents(roomId, date);
       const booking = events.find(e => e.eventId === eventId);
 
@@ -167,28 +174,31 @@ export function registerEditSubmit(app: App): void {
       const newEndTime = parseDateTimeString(newDateStr, newEndTimeStr);
 
       // 기존 이벤트 조회
-      const originalDate = new Date(originalDateStr + 'T00:00:00');
+      const originalDate = new Date(originalDateStr + 'T00:00:00+09:00');
       const events = await listRoomEvents(roomId, originalDate);
       const oldBooking = events.find(e => e.eventId === eventId);
 
       // roomName 채우기
-      const room = getRoomById(roomId);
-      if (oldBooking) {
-        oldBooking.roomName = room?.name ?? '';
+      if (!oldBooking) {
+        await client.chat.postMessage({
+          channel: body.user.id,
+          text: '❌ 선택한 예약을 찾을 수 없습니다. 이미 수정 또는 삭제되었을 수 있습니다.',
+        });
+        return;
       }
+      const room = getRoomById(roomId);
+      oldBooking.roomName = room?.name ?? '';
 
       // changes 구성
       const changes: BookingChanges = {};
-      if (oldBooking) {
-        if (oldBooking.summary !== newSummary) {
-          changes.summary = { before: oldBooking.summary, after: newSummary };
-        }
-        if (oldBooking.startTime.getTime() !== newStartTime.getTime()) {
-          changes.startTime = { before: oldBooking.startTime, after: newStartTime };
-        }
-        if (oldBooking.endTime.getTime() !== newEndTime.getTime()) {
-          changes.endTime = { before: oldBooking.endTime, after: newEndTime };
-        }
+      if (oldBooking.summary !== newSummary) {
+        changes.summary = { before: oldBooking.summary, after: newSummary };
+      }
+      if (oldBooking.startTime.getTime() !== newStartTime.getTime()) {
+        changes.startTime = { before: oldBooking.startTime, after: newStartTime };
+      }
+      if (oldBooking.endTime.getTime() !== newEndTime.getTime()) {
+        changes.endTime = { before: oldBooking.endTime, after: newEndTime };
       }
 
       await updateBooking(eventId, roomId, {
@@ -226,21 +236,24 @@ export function registerEditSubmit(app: App): void {
       const dateStr = meta.date ?? '';
 
       // 기존 이벤트 조회
-      const date = new Date(dateStr + 'T00:00:00');
+      const date = new Date(dateStr + 'T00:00:00+09:00');
       const events = await listRoomEvents(roomId, date);
       const booking = events.find(e => e.eventId === eventId);
 
       // roomName 채우기
-      if (booking) {
-        const room = getRoomById(roomId);
-        booking.roomName = room?.name ?? '';
+      if (!booking) {
+        await client.chat.postMessage({
+          channel: body.user.id,
+          text: '❌ 선택한 예약을 찾을 수 없습니다. 이미 삭제되었을 수 있습니다.',
+        });
+        return;
       }
+      const room = getRoomById(roomId);
+      booking.roomName = room?.name ?? '';
 
       await cancelBooking(eventId, roomId);
 
-      if (booking) {
-        await sendCancelNotification(client, booking);
-      }
+      await sendCancelNotification(client, booking);
 
       await client.chat.postMessage({
         channel: body.user.id,

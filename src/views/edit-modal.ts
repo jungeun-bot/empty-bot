@@ -81,10 +81,13 @@ export function buildDateRoomSelectModal() {
 export function buildBookingListModal(bookings: BookingEvent[]) {
   const date = formatDateYMD(bookings[0]!.startTime);
 
-  const bookingOptions = bookings.slice(0, 10).map(b => ({
-    text: { type: 'plain_text' as const, text: `[${b.roomName}] ${formatDateTime(b.startTime)} ~ ${formatDateTime(b.endTime)} | ${b.summary}` },
-    value: `${b.roomId}::${b.eventId}`,
-  }));
+  const bookingOptions = bookings.slice(0, 10).map(b => {
+    const optionText = `[${b.roomName}] ${formatDateTime(b.startTime)} ~ ${formatDateTime(b.endTime)} | ${b.summary}`;
+    return {
+      text: { type: 'plain_text' as const, text: optionText.length > 75 ? optionText.slice(0, 72) + '...' : optionText },
+      value: `${b.roomId}::${b.eventId}`,
+    };
+  });
 
   const actionOptions = [
     { text: { type: 'plain_text' as const, text: '수정' }, value: 'edit' },
