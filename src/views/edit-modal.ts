@@ -1,4 +1,4 @@
-import { getRoomsByType } from '../config/rooms.js';
+import { ROOMS } from '../config/rooms.js';
 import { formatDateTime } from './common.js';
 import type { BookingEvent } from '../types/index.js';
 
@@ -33,7 +33,6 @@ function generateEditTimeOptions() {
 }
 
 export function buildDateRoomSelectModal() {
-  const rooms = getRoomsByType('meeting');
   return {
     type: 'modal' as const,
     callback_id: 'edit_date_room_select',
@@ -71,38 +70,16 @@ export function buildDateRoomSelectModal() {
           },
         },
       },
-      {
-        type: 'input' as const,
-        block_id: 'room_block',
-        label: {
-          type: 'plain_text' as const,
-          text: '회의실',
-          emoji: true,
-        },
-        element: {
-          type: 'static_select' as const,
-          action_id: 'room_input',
-          placeholder: {
-            type: 'plain_text' as const,
-            text: '회의실 선택',
-            emoji: false,
-          },
-          options: rooms.map(room => ({
-            text: { type: 'plain_text' as const, text: room.name, emoji: false },
-            value: room.id,
-          })),
-        },
-      },
     ],
   };
 }
 
-export function buildBookingListModal(bookings: BookingEvent[], roomId: string) {
+export function buildBookingListModal(bookings: BookingEvent[]) {
   const date = formatDateYMD(bookings[0]!.startTime);
 
   const bookingOptions = bookings.slice(0, 10).map(b => ({
-    text: { type: 'plain_text' as const, text: `${formatDateTime(b.startTime)} ~ ${formatDateTime(b.endTime)} | ${b.summary}` },
-    value: b.eventId,
+    text: { type: 'plain_text' as const, text: `[${b.roomName}] ${formatDateTime(b.startTime)} ~ ${formatDateTime(b.endTime)} | ${b.summary}` },
+    value: `${b.roomId}::${b.eventId}`,
   }));
 
   const actionOptions = [
@@ -128,7 +105,7 @@ export function buildBookingListModal(bookings: BookingEvent[], roomId: string) 
       text: '닫기',
       emoji: true,
     },
-    private_metadata: JSON.stringify({ roomId, date }),
+    private_metadata: JSON.stringify({ date }),
     blocks: [
       {
         type: 'input' as const,

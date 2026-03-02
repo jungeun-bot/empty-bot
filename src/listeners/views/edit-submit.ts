@@ -5,10 +5,11 @@ import type { BookingChanges } from '../../services/notification.js';
 import { buildBookingListModal, buildEditBookingModal, buildCancelConfirmModal } from '../../views/edit-modal.js';
 import { buildProcessingView, buildErrorView } from '../../views/result-views.js';
 import { parseDateTimeString } from '../../views/common.js';
-import { getRoomById } from '../../config/rooms.js';
+import { ROOMS, getRoomById } from '../../config/rooms.js';
+import type { BookingEvent } from '../../types/index.js';
 
 export function registerEditSubmit(app: App): void {
-  // 1. 날짜/회의실 선택 → 예약 목록 조회
+  // 1. 날짜 선택 → 전체 회의실 예약 목록 조회
   app.view('edit_date_room_select', async ({ ack, view, body, client, logger }) => {
     await ack({
       response_action: 'update',
@@ -18,12 +19,11 @@ export function registerEditSubmit(app: App): void {
     try {
       const values = view.state.values;
       const dateStr = values['date_block']?.['date_input']?.selected_date;
-      const roomId = values['room_block']?.['room_input']?.selected_option?.value;
 
-      if (!dateStr || !roomId) {
+      if (!dateStr) {
         await client.views.update({
           view_id: body.view?.id ?? '',
-          view: buildErrorView('날짜와 회의실을 선택해주세요.'),
+          view: buildErrorView('날짜를 선택해주세요.'),
         });
         return;
       }
@@ -38,10 +38,25 @@ export function registerEditSubmit(app: App): void {
       }
 
       const date = new Date(dateStr + 'T00:00:00');
-      const bookings = await listRoomEvents(roomId, date);
+      const results = await Promise.allSettled(
+        ROOMS.map(room => listRoomEvents(room.id, date))
+      );
+      const allBookings: BookingEvent[] = [];
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i]!;
+        if (result.status === 'fulfilled') {
+          const room = ROOMS[i]!;
+          for (const booking of result.value) {
+            booking.roomName = room.name;
+            booking.roomId = room.id;
+            allBookings.push(booking);
+          }
+        }
+      }
 
       // 본인 예약만 필터
-      const myBookings = bookings.filter(b => b.organizer === organizerEmail);
+      const myBookings = allBookings.filter(b => b.organizer === organizerEmail);
+      myBookings.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
 
       if (myBookings.length === 0) {
         await client.views.update({
@@ -53,7 +68,7 @@ export function registerEditSubmit(app: App): void {
 
       await client.views.update({
         view_id: body.view?.id ?? '',
-        view: buildBookingListModal(myBookings, roomId),
+        view: buildBookingListModal(myBookings),
       });
     } catch (error) {
       logger.error('edit_date_room_select 처리 오류:', error);
@@ -76,12 +91,12 @@ export function registerEditSubmit(app: App): void {
     });
 
     try {
-      const meta = JSON.parse(view.private_metadata ?? '{}') as { roomId?: string; date?: string };
-      const roomId = meta.roomId ?? '';
+      const meta = JSON.parse(view.private_metadata ?? '{}') as { date?: string };
       const dateStr = meta.date ?? '';
 
       const values = view.state.values;
-      const eventId = values['booking_select_block']?.['booking_radio']?.selected_option?.value ?? '';
+      const selectedValue = values['booking_select_block']?.['booking_radio']?.selected_option?.value ?? '';
+      const [roomId = '', eventId = ''] = selectedValue.split('::');
       const action = values['action_select_block']?.['action_radio']?.selected_option?.value ?? 'edit';
 
       if (!roomId || !eventId || !dateStr) {
