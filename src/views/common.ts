@@ -7,6 +7,12 @@ export interface TimeOption {
   value: string;
 }
 
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+export function toKST(date: Date): Date {
+  return new Date(date.getTime() + KST_OFFSET_MS);
+}
+
 /**
  * 00:00 ~ 23:30 사이의 30분 단위 시간 옵션 48개 생성
  */
@@ -31,12 +37,13 @@ export function generateTimeOptions(): TimeOption[] {
  * 예: "3월 1일 (금) 14:00"
  */
 export function formatDateTime(date: Date): string {
+  const kst = toKST(date);
   const days = ['일', '월', '화', '수', '목', '금', '토'];
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const dayOfWeek = days[date.getDay()];
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const month = kst.getUTCMonth() + 1;
+  const day = kst.getUTCDate();
+  const dayOfWeek = days[kst.getUTCDay()];
+  const hours = String(kst.getUTCHours()).padStart(2, '0');
+  const minutes = String(kst.getUTCMinutes()).padStart(2, '0');
   return `${month}월 ${day}일 (${dayOfWeek}) ${hours}:${minutes}`;
 }
 
@@ -45,10 +52,12 @@ export function formatDateTime(date: Date): string {
  * 예: "14:00 ~ 15:30"
  */
 export function formatTimeRange(start: Date, end: Date): string {
-  const startH = String(start.getHours()).padStart(2, '0');
-  const startM = String(start.getMinutes()).padStart(2, '0');
-  const endH = String(end.getHours()).padStart(2, '0');
-  const endM = String(end.getMinutes()).padStart(2, '0');
+  const startKst = toKST(start);
+  const endKst = toKST(end);
+  const startH = String(startKst.getUTCHours()).padStart(2, '0');
+  const startM = String(startKst.getUTCMinutes()).padStart(2, '0');
+  const endH = String(endKst.getUTCHours()).padStart(2, '0');
+  const endM = String(endKst.getUTCMinutes()).padStart(2, '0');
   return `${startH}:${startM} ~ ${endH}:${endM}`;
 }
 
@@ -56,7 +65,5 @@ export function formatTimeRange(start: Date, end: Date): string {
  * 날짜 문자열(YYYY-MM-DD)과 시간 문자열(HH:MM)을 Date로 변환
  */
 export function parseDateTimeString(dateStr: string, timeStr: string): Date {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const [hour, minute] = timeStr.split(':').map(Number);
-  return new Date(year!, month! - 1, day!, hour!, minute!, 0, 0);
+  return new Date(`${dateStr}T${timeStr}:00+09:00`);
 }

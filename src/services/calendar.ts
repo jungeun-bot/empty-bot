@@ -177,8 +177,7 @@ export async function getRoomAvailableUntil(
   const calendar = getCalendarClient();
 
   // 오늘 자정까지 조회
-  const endOfDay = new Date(from);
-  endOfDay.setHours(23, 59, 59, 999);
+  const { endOfDay } = getKSTDayRange(from);
 
   try {
     const response = await calendar.freebusy.query({
@@ -213,13 +212,22 @@ export async function getRoomAvailableUntil(
  * 특정 회의실의 특정 날짜 예약 목록 조회
  * extendedProperties로 봇이 생성한 이벤트만 필터
  */
+function getKSTDayRange(date: Date): { startOfDay: Date; endOfDay: Date } {
+  const KST_OFFSET = 9 * 60 * 60 * 1000;
+  const kst = new Date(date.getTime() + KST_OFFSET);
+  const y = kst.getUTCFullYear();
+  const mo = String(kst.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(kst.getUTCDate()).padStart(2, '0');
+  return {
+    startOfDay: new Date(`${y}-${mo}-${d}T00:00:00+09:00`),
+    endOfDay: new Date(`${y}-${mo}-${d}T23:59:59+09:00`),
+  };
+}
+
 export async function listRoomEvents(roomId: string, date: Date): Promise<BookingEvent[]> {
   const calendar = getCalendarClient();
 
-  const startOfDay = new Date(date);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(date);
-  endOfDay.setHours(23, 59, 59, 999);
+  const { startOfDay, endOfDay } = getKSTDayRange(date);
 
   const response = await calendar.events.list({
     calendarId: roomId,
@@ -280,8 +288,8 @@ export async function updateBooking(
 
   const patch: Record<string, unknown> = {};
   if (updates.summary) patch['summary'] = updates.summary;
-  if (updates.startTime) patch['start'] = { dateTime: updates.startTime.toISOString() };
-  if (updates.endTime) patch['end'] = { dateTime: updates.endTime.toISOString() };
+  if (updates.startTime) patch['start'] = { dateTime: updates.startTime.toISOString(), timeZone: env.google.timezone };
+  if (updates.endTime) patch['end'] = { dateTime: updates.endTime.toISOString(), timeZone: env.google.timezone };
   if (newAttendeeEmails.length > 0) patch['attendees'] = mergedAttendees;
 
   await calendar.events.patch({

@@ -3,15 +3,19 @@ import { formatDateTime } from './common.js';
 import type { BookingEvent } from '../types/index.js';
 
 function formatDateYMD(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+  const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+  const kst = new Date(date.getTime() + KST_OFFSET_MS);
+  const y = kst.getUTCFullYear();
+  const m = String(kst.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(kst.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 
 function extractTimeStr(date: Date): string {
-  const h = String(date.getHours()).padStart(2, '0');
-  const m = String(date.getMinutes()).padStart(2, '0');
+  const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+  const kst = new Date(date.getTime() + KST_OFFSET_MS);
+  const h = String(kst.getUTCHours()).padStart(2, '0');
+  const m = String(kst.getUTCMinutes()).padStart(2, '0');
   return `${h}:${m}`;
 }
 
