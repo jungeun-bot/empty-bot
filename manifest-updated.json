@@ -1,0 +1,240 @@
+{
+    "display_information": {
+        "name": "빈방있소",
+        "description": "여러분들을 위한 회의실 예약봇!",
+        "background_color": "#000000"
+    },
+    "features": {
+        "bot_user": {
+            "display_name": "bingbang",
+            "always_online": true
+        },
+        "slash_commands": [
+            {
+                "command": "/book",
+                "description": "회의실 예약 및 조회",
+                "usage_hint": "[시간] [인원] [참석자]",
+                "should_escape": false
+            },
+            {
+                "command": "/now-book",
+                "description": "지금 바로 회의실 예약",
+                "usage_hint": "[인원]",
+                "should_escape": false
+            },
+            {
+                "command": "/edit",
+                "description": "회의실 예약 수정/취소",
+                "should_escape": false
+            },
+            {
+                "command": "/setup-booking",
+                "description": "메세지 고정",
+                "should_escape": false
+            }
+        ]
+    },
+    "oauth_config": {
+        "scopes": {
+            "bot": [
+                "pins:write",
+                "app_mentions:read",
+                "chat:write",
+                "commands",
+                "im:history",
+                "im:write",
+                "users:read",
+                "users:read.email"
+            ]
+        }
+    },
+    "settings": {
+        "event_subscriptions": {
+            "bot_events": [
+                "app_mention",
+                "message.im",
+                "function_executed"
+            ]
+        },
+        "interactivity": {
+            "is_enabled": true
+        },
+        "org_deploy_enabled": true,
+        "socket_mode_enabled": true,
+        "token_rotation_enabled": false,
+        "function_runtime": "remote"
+    },
+    "functions": {
+        "book_room": {
+            "title": "회의실 예약",
+            "description": "회의실을 자동으로 예약합니다",
+            "input_parameters": {
+                "start_time": {
+                    "type": "string",
+                    "title": "시작 시간",
+                    "description": "예약 시작 시간",
+                    "is_required": true,
+                    "name": "start_time"
+                },
+                "end_time": {
+                    "type": "string",
+                    "title": "종료 시간",
+                    "description": "예약 종료 시간",
+                    "is_required": true,
+                    "name": "end_time"
+                },
+                "capacity": {
+                    "type": "string",
+                    "title": "인원수",
+                    "description": "필요한 인원수",
+                    "is_required": false,
+                    "name": "capacity"
+                },
+                "title": {
+                    "type": "string",
+                    "title": "회의 제목",
+                    "description": "회의 제목",
+                    "is_required": false,
+                    "name": "title"
+                },
+                "organizer_email": {
+                    "type": "string",
+                    "title": "주최자 이메일",
+                    "description": "주최자 이메일 주소",
+                    "is_required": false,
+                    "name": "organizer_email"
+                },
+                "attendee_emails": {
+                    "type": "string",
+                    "title": "참석자 이메일",
+                    "description": "참석자 이메일 목록",
+                    "is_required": false,
+                    "name": "attendee_emails"
+                },
+                "room_type": {
+                    "type": "string",
+                    "title": "회의실 유형",
+                    "description": "meeting 또는 focusing",
+                    "is_required": false,
+                    "name": "room_type"
+                }
+            },
+            "output_parameters": {
+                "event_id": {
+                    "type": "string",
+                    "title": "이벤트 ID",
+                    "description": "생성된 캘린더 이벤트 ID",
+                    "is_required": true,
+                    "name": "event_id"
+                },
+                "room_name": {
+                    "type": "string",
+                    "title": "회의실 이름",
+                    "description": "예약된 회의실 이름",
+                    "is_required": true,
+                    "name": "room_name"
+                },
+                "room_id": {
+                    "type": "string",
+                    "title": "회의실 ID",
+                    "description": "예약된 회의실 ID",
+                    "is_required": true,
+                    "name": "room_id"
+                }
+            }
+        },
+        "edit_booking": {
+            "title": "예약 수정",
+            "description": "기존 예약을 수정합니다",
+            "input_parameters": {
+                "event_id": {
+                    "type": "string",
+                    "title": "이벤트 ID",
+                    "description": "수정할 이벤트 ID",
+                    "is_required": true,
+                    "name": "event_id"
+                },
+                "room_id": {
+                    "type": "string",
+                    "title": "회의실 ID",
+                    "description": "회의실 ID",
+                    "is_required": true,
+                    "name": "room_id"
+                },
+                "new_title": {
+                    "type": "string",
+                    "title": "새 제목",
+                    "description": "변경할 회의 제목",
+                    "is_required": false,
+                    "name": "new_title"
+                },
+                "new_start_time": {
+                    "type": "string",
+                    "title": "새 시작 시간",
+                    "description": "변경할 시작 시간",
+                    "is_required": false,
+                    "name": "new_start_time"
+                },
+                "new_end_time": {
+                    "type": "string",
+                    "title": "새 종료 시간",
+                    "description": "변경할 종료 시간",
+                    "is_required": false,
+                    "name": "new_end_time"
+                }
+            },
+            "output_parameters": {
+                "success": {
+                    "type": "boolean",
+                    "title": "성공 여부",
+                    "description": "수정 성공 여부",
+                    "is_required": true,
+                    "name": "success"
+                },
+                "event_id": {
+                    "type": "string",
+                    "title": "이벤트 ID",
+                    "description": "수정된 이벤트 ID",
+                    "is_required": true,
+                    "name": "event_id"
+                }
+            }
+        },
+        "cancel_booking": {
+            "title": "예약 취소",
+            "description": "기존 예약을 취소합니다",
+            "input_parameters": {
+                "event_id": {
+                    "type": "string",
+                    "title": "이벤트 ID",
+                    "description": "취소할 이벤트 ID",
+                    "is_required": true,
+                    "name": "event_id"
+                },
+                "room_id": {
+                    "type": "string",
+                    "title": "회의실 ID",
+                    "description": "회의실 ID",
+                    "is_required": true,
+                    "name": "room_id"
+                }
+            },
+            "output_parameters": {
+                "success": {
+                    "type": "boolean",
+                    "title": "성공 여부",
+                    "description": "취소 성공 여부",
+                    "is_required": true,
+                    "name": "success"
+                },
+                "event_id": {
+                    "type": "string",
+                    "title": "이벤트 ID",
+                    "description": "취소된 이벤트 ID",
+                    "is_required": true,
+                    "name": "event_id"
+                }
+            }
+        }
+    }
+}

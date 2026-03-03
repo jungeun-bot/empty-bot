@@ -1,0 +1,63 @@
+TASK 1: Add getRoomCalendarClient() helper and update 3 call sites
+STATUS: ✅ COMPLETED
+
+VERIFICATION RESULTS:
+===================
+
+1. TypeScript Compilation:
+   Command: npx tsc --noEmit
+   Result: ✅ PASSED (0 errors)
+
+2. Function Definition:
+   Pattern: function getRoomCalendarClient
+   Matches: 1 (line 227)
+   Status: ✅ CORRECT - exactly 1 definition
+
+3. Call Sites Updated:
+   Pattern: getRoomCalendarClient()
+   Matches: 3 (lines 236, 273, 315)
+   Status: ✅ CORRECT - exactly 3 call sites
+   
+   Details:
+   - Line 236: listRoomEvents() - ✅ Updated
+   - Line 273: updateBooking() - ✅ Updated
+   - Line 315: cancelBooking() - ✅ Updated
+
+4. Unchanged Functions (FreeBusy API):
+   Pattern: getCalendarClient() (remaining)
+   Matches: 4 (lines 20, 63, 177, 232)
+   Status: ✅ CORRECT
+   
+   Details:
+   - Line 20: getAvailableRooms() - ✅ NOT modified (FreeBusy API)
+   - Line 63: createBooking() - ✅ NOT modified (FreeBusy API)
+   - Line 177: getRoomAvailableUntil() - ✅ NOT modified (FreeBusy API)
+   - Line 232: Inside getRoomCalendarClient() fallback - ✅ Correct
+
+IMPLEMENTATION DETAILS:
+======================
+Function added at line 227 (after getKSTDayRange):
+
+function getRoomCalendarClient() {
+  const adminEmail = process.env['GOOGLE_ADMIN_EMAIL'];
+  if (adminEmail) {
+    return getCalendarClientForUser(adminEmail);
+  }
+  return getCalendarClient();
+}
+
+REQUIREMENTS MET:
+================
+✅ New function getRoomCalendarClient() exists in src/services/calendar.ts
+✅ Placed between getKSTDayRange and listRoomEvents
+✅ listRoomEvents uses getRoomCalendarClient()
+✅ updateBooking uses getRoomCalendarClient()
+✅ cancelBooking uses getRoomCalendarClient()
+✅ getAvailableRooms NOT modified
+✅ getRoomAvailableUntil NOT modified
+✅ createBooking NOT modified
+✅ npx tsc --noEmit exits 0
+✅ Function is private (no export keyword)
+✅ No new imports added (both functions already imported on line 1)
+
+TIMESTAMP: 2026-03-03

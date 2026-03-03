@@ -1,0 +1,44 @@
+Task 2: Rename focusing → focus — Build Verification
+=====================================================
+Date: 2026-03-03
+
+1. TypeScript Compilation Check
+   Command: npx tsc --noEmit
+   Result: EXIT_CODE: 0 (no errors)
+
+2. Stale 'focusing' String Literal Check
+   Grep: 'focusing' (with quotes) across src/
+   Result: 0 matches (all removed)
+
+3. Broader 'focusing' Pattern Check
+   Grep: focusing (without quotes) across src/
+   Result: 6 matches — ALL in rooms.ts id fields (Google Calendar resource IDs, intentionally preserved):
+     - focusing-room-4@resource.calendar.google.com
+     - focusing-room-5@resource.calendar.google.com
+     - focusing-room-6@resource.calendar.google.com
+     - focusing-room-7@resource.calendar.google.com
+     - focusing-room-8@resource.calendar.google.com
+     - focusing-room-9@resource.calendar.google.com
+
+4. Renamed Function Check
+   Grep: startFocusingConversation across src/
+   Result: 0 matches (fully renamed to startFocusConversation)
+
+5. Korean Display Text Check
+   Grep: 포커싱룸 across src/
+   Result: 1 match — ONLY in message-parser.ts regex (backward compat, intentionally kept)
+     - /포커스룸|포커스 룸|포커싱룸|포커싱 룸|집중실|집중 공간/
+
+Files Modified (10):
+  A. src/types/index.ts — RoomType 'focusing'→'focus', ConversationStage, comment
+  B. src/config/rooms.ts — 6 name fields, 6 type fields (id fields untouched)
+  C. src/views/book-modal.ts — radio button text+value
+  D. src/listeners/actions/book-type-select.ts — comparison, modal, variable name
+  E. src/listeners/views/book-submit.ts — type annotation, comparisons, variable names, Korean text
+  F. src/listeners/functions/book-room.ts — type comparison, type assertion
+  G. src/services/conversation.ts — function names, variable names, stage, Korean text, type values
+  H. src/services/message-parser.ts — variable name, regex (added new keywords), type value
+  I. src/listeners/events/mention.ts — import, comparison, function call
+  J. src/listeners/events/dm.ts — import, comparison, function call
+
+All verifications PASSED.

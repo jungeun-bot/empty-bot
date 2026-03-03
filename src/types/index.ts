@@ -103,6 +103,7 @@ export interface BookingEvent {
   startTime: Date;
   endTime: Date;
   organizer: string;
+  creator: string;
   organizerSlackId?: string;
   attendees: string[];
   roomId: string;

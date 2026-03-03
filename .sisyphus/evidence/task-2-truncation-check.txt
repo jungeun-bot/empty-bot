@@ -1,0 +1,5 @@
+﻿
+src\views\edit-modal.ts:84:  const bookingOptions = bookings.slice(0, 10).map(b => {
+src\views\edit-modal.ts:87:      text: { type: 'plain_text' as const, text: optionText.length > 75 ? optionText.slice(0, 72) + '...' : optionText },
+
+

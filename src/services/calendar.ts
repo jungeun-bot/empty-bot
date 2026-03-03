@@ -254,6 +254,7 @@ export async function listRoomEvents(roomId: string, date: Date): Promise<Bookin
       startTime: new Date(e.start!.dateTime!),
       endTime: new Date(e.end!.dateTime!),
       organizer: e.organizer?.email ?? '',
+      creator: e.creator?.email ?? '',
       attendees: (e.attendees ?? []).map((a: calendar_v3.Schema$EventAttendee) => a.email ?? '').filter(Boolean),
       roomId,
       roomName: '',

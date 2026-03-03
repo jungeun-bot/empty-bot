@@ -61,8 +61,20 @@ export function registerEditSubmit(app: App): void {
         }
       }
 
-      // 본인 예약만 필터
-      const myBookings = allBookings.filter(b => b.organizer.toLowerCase() === organizerEmail.toLowerCase());
+      logger.info(`[/수정] 예약자: ${organizerEmail}, 전체 예약: ${allBookings.length}건`);
+      for (const b of allBookings) {
+        logger.info(`  - [${b.roomName}] ${b.summary} | organizer=${b.organizer} creator=${b.creator} attendees=${b.attendees.join(',')}`);
+      }
+
+      // 본인 예약만 필터 (organizer, creator, attendees 모두 확인 — room calendar에서는 organizer가 다를 수 있음)
+      const myBookings = allBookings.filter(b => {
+        const email = organizerEmail.toLowerCase();
+        return (
+          b.organizer.toLowerCase() === email ||
+          b.creator.toLowerCase() === email ||
+          b.attendees.some(a => a.toLowerCase() === email)
+        );
+      });
       myBookings.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
 
       if (myBookings.length === 0) {
