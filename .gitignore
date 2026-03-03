@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Google service account key
+service-account.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Dev/utility scripts
+commit.bat
+commit.py
+run_commit.bat
+run_git.py
+do_git_init.py
+final_git_init.py
+init_git.bat
+init.sh

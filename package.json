@@ -1,0 +1,24 @@
+{
+  "name": "slack-room-bot",
+  "version": "1.0.0",
+  "description": "Google Calendar 연동 회의실 예약 슬랙봇",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js"
+  },
+  "dependencies": {
+    "@slack/bolt": "^4.1.0",
+    "googleapis": "^144.0.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.21.0"
+  }
+}
