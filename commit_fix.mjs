@@ -15,5 +15,5 @@ function run(cmd) {
 }
 
 run(`"${git}" add -A`);
-run(`"${git}" commit -m "feat: always collect attendees in conversational booking, show confirmation with invitation notice"`);
+run(`"${git}" commit -m "feat: add book_today_meeting workflow function for recurring meetings, fix book_room organizer validation"`);
 run(`"${git}" log --oneline -5`);

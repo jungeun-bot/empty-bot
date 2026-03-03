@@ -235,6 +235,91 @@
                     "name": "event_id"
                 }
             }
+        },
+        "book_today_meeting": {
+            "title": "오늘 정기 회의 예약",
+            "description": "오늘 날짜에 회의실을 자동 예약합니다 (정기 회의용)",
+            "input_parameters": {
+                "start_hour": {
+                    "type": "string",
+                    "title": "시작 시간",
+                    "description": "시작 시간 (HH:MM 형식, 예: 10:00)",
+                    "is_required": true,
+                    "name": "start_hour"
+                },
+                "end_hour": {
+                    "type": "string",
+                    "title": "종료 시간",
+                    "description": "종료 시간 (HH:MM 형식, 예: 11:00)",
+                    "is_required": true,
+                    "name": "end_hour"
+                },
+                "capacity": {
+                    "type": "string",
+                    "title": "인원수",
+                    "description": "필요한 인원수",
+                    "is_required": false,
+                    "name": "capacity"
+                },
+                "title": {
+                    "type": "string",
+                    "title": "회의 제목",
+                    "description": "회의 제목",
+                    "is_required": true,
+                    "name": "title"
+                },
+                "organizer_email": {
+                    "type": "string",
+                    "title": "주최자 이메일",
+                    "description": "주최자 이메일 주소",
+                    "is_required": true,
+                    "name": "organizer_email"
+                },
+                "attendee_emails": {
+                    "type": "string",
+                    "title": "참석자 이메일",
+                    "description": "참석자 이메일 목록 (쉼표 구분)",
+                    "is_required": false,
+                    "name": "attendee_emails"
+                },
+                "room_type": {
+                    "type": "string",
+                    "title": "회의실 유형",
+                    "description": "meeting 또는 focus",
+                    "is_required": false,
+                    "name": "room_type"
+                },
+                "notify_channel": {
+                    "type": "string",
+                    "title": "알림 채널",
+                    "description": "예약 결과를 알릴 채널 ID",
+                    "is_required": false,
+                    "name": "notify_channel"
+                }
+            },
+            "output_parameters": {
+                "event_id": {
+                    "type": "string",
+                    "title": "이벤트 ID",
+                    "description": "생성된 캘린더 이벤트 ID",
+                    "is_required": true,
+                    "name": "event_id"
+                },
+                "room_name": {
+                    "type": "string",
+                    "title": "회의실 이름",
+                    "description": "예약된 회의실 이름",
+                    "is_required": true,
+                    "name": "room_name"
+                },
+                "message": {
+                    "type": "string",
+                    "title": "결과 메시지",
+                    "description": "예약 결과 메시지",
+                    "is_required": true,
+                    "name": "message"
+                }
+            }
         }
     }
 }

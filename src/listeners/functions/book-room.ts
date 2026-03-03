@@ -12,7 +12,12 @@ export function registerBookRoomFunction(app: App): void {
       const endTimeStr = inputs['end_time'] as string;
       const capacity = Number(inputs['capacity'] ?? 1);
       const title = (inputs['title'] as string) || '미팅룸 예약';
-      const organizerEmail = (inputs['organizer_email'] as string) || '';
+      const organizerEmail = inputs['organizer_email'] as string;
+
+      if (!organizerEmail) {
+        await fail({ error: 'organizer_email은 필수입니다.' });
+        return;
+      }
       const attendeeEmails = ((inputs['attendee_emails'] as string) || '').split(',').map(e => e.trim()).filter(Boolean);
       const roomType = (inputs['room_type'] as string) === 'focus' ? 'focus' : 'meeting';
 
