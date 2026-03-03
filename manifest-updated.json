@@ -295,6 +295,13 @@
                     "description": "예약 결과를 알릴 채널 ID",
                     "is_required": false,
                     "name": "notify_channel"
+                },
+                "repeat_until": {
+                    "type": "string",
+                    "title": "반복 종료일",
+                    "description": "이 날짜 이후 자동 예약을 중단합니다 (YYYY-MM-DD 형식, 예: 2025-12-31)",
+                    "is_required": false,
+                    "name": "repeat_until"
                 }
             },
             "output_parameters": {

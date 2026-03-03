@@ -27,10 +27,34 @@ export function registerBookTodayMeetingFunction(app: App): void {
       const attendeeEmailsRaw = (inputs['attendee_emails'] as string) || '';
       const roomType = (inputs['room_type'] as string) === 'focus' ? 'focus' : 'meeting';
       const notifyChannel = (inputs['notify_channel'] as string) || '';
+      const repeatUntil = (inputs['repeat_until'] as string) || '';  // "2025-12-31"
 
       if (!organizerEmail) {
         await fail({ error: 'organizer_email은 필수입니다.' });
         return;
+      }
+
+      // ── 반복 종료일 확인 ──
+      const now = new Date();
+      const kst = new Date(now.getTime() + KST_OFFSET_MS);
+      const year = kst.getUTCFullYear();
+      const month = kst.getUTCMonth();
+      const day = kst.getUTCDate();
+
+      if (repeatUntil) {
+        const [untilY, untilM, untilD] = repeatUntil.split('-').map(Number);
+        if (untilY && untilM && untilD) {
+          const todayNum = year * 10000 + (month + 1) * 100 + day;
+          const untilNum = untilY * 10000 + untilM * 100 + untilD;
+          if (todayNum > untilNum) {
+            const skipMsg = `⏹️ 정기 회의 "${title}"의 반복 기간이 종료되었습니다. (종료일: ${repeatUntil})\n이 워크플로를 비활성화해주세요.`;
+            if (notifyChannel) {
+              await client.chat.postMessage({ channel: notifyChannel, text: skipMsg });
+            }
+            await complete({ outputs: { event_id: '', room_name: '', message: skipMsg } });
+            return;
+          }
+        }
       }
 
       // ── KST 기준 오늘 날짜 + 시/분 → UTC Date 변환 ──
@@ -41,12 +65,6 @@ export function registerBookTodayMeetingFunction(app: App): void {
         await fail({ error: '시간 형식이 올바르지 않습니다. HH:MM 형식으로 입력하세요. (예: 10:00)' });
         return;
       }
-
-      const now = new Date();
-      const kst = new Date(now.getTime() + KST_OFFSET_MS);
-      const year = kst.getUTCFullYear();
-      const month = kst.getUTCMonth();
-      const day = kst.getUTCDate();
 
       // KST 시간 → UTC Date
       const startTime = new Date(Date.UTC(year, month, day, startH!, startM!, 0, 0) - KST_OFFSET_MS);
