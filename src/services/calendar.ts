@@ -281,10 +281,21 @@ export async function listRoomEvents(roomId: string, date: Date): Promise<Bookin
   const events = response.data.items ?? [];
   const roomIdSet = new Set(ROOMS.map(r => r.id));
 
+  // 진단 로깅: raw API 응답
+  console.log(`[listUserBookings] email=${userEmail}, timeMin=${startOfDay.toISOString()}, timeMax=${endOfDay.toISOString()}`);
+  console.log(`[listUserBookings] raw events count: ${events.length}, roomIdSet size: ${roomIdSet.size}`);
+  for (const ev of events) {
+    const attendeeInfo = (ev.attendees ?? []).map(a => `${a.email}(resource=${a.resource})`).join(', ');
+    console.log(`[listUserBookings]   event: ${ev.summary} | attendees: [${attendeeInfo}]`);
+  }
+
   return events
     .filter((e: calendar_v3.Schema$Event) => e.start?.dateTime && e.end?.dateTime)
     .map((e: calendar_v3.Schema$Event) => {
-      const roomAttendee = e.attendees?.find(a => a.resource === true && roomIdSet.has(a.email ?? ''));
+      // resource 필드에 의존하지 않고, roomIdSet 매칭 또는 @resource.calendar.google.com suffix로 판별
+      const roomAttendee = e.attendees?.find(a =>
+        roomIdSet.has(a.email ?? '') || (a.email?.endsWith('@resource.calendar.google.com') ?? false)
+      );
       const roomId = roomAttendee?.email ?? '';
       const room = ROOMS.find(r => r.id === roomId);
       return {
@@ -318,7 +329,7 @@ export async function getUserEvent(userEmail: string, eventId: string): Promise<
     if (!e.start?.dateTime || !e.end?.dateTime) return null;
 
     const roomIdSet = new Set(ROOMS.map(r => r.id));
-    const roomAttendee = e.attendees?.find(a => a.resource === true && roomIdSet.has(a.email ?? ''));
+      const roomAttendee = e.attendees?.find(a => roomIdSet.has(a.email ?? '') || (a.email?.endsWith('@resource.calendar.google.com') ?? false));
     const roomId = roomAttendee?.email ?? '';
     const room = ROOMS.find(r => r.id === roomId);
 

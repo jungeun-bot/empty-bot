@@ -66,7 +66,7 @@ export function registerEditSubmit(app: App): void {
         return;
       }
 
-      logger.info(`[/수정] 예약자: ${organizerEmail}, 조회된 예약: ${myBookings.length}건`);
+      logger.info(`[/수정 v4] 예약자: ${organizerEmail}, 조회된 예약: ${myBookings.length}건`);
       for (const b of myBookings) {
         logger.info(`  - [${b.roomName}] ${b.summary} | room=${b.roomId}`);
       }
@@ -74,7 +74,7 @@ export function registerEditSubmit(app: App): void {
       if (myBookings.length === 0) {
         await client.views.update({
           view_id: body.view?.id ?? '',
-          view: buildErrorView(`해당 날짜에 수정 가능한 예약이 없습니다.\n(조회 계정: ${organizerEmail})`),
+          view: buildErrorView(`해당 날짜에 수정 가능한 예약이 없습니다.\n(조회 계정: ${organizerEmail})\n(버전: v4-no-resource-filter)`),
         });
         return;
       }
