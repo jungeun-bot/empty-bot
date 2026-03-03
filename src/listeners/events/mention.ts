@@ -16,7 +16,6 @@ import {
   startFocusConversation,
   startEditConversation,
   buildInfoPrompt,
-  buildTitlePrompt,
 } from '../../services/conversation.js';
 
 function generateBookingId(): string {
@@ -100,22 +99,13 @@ export function registerMentionHandler(app: App): void {
           return;
         }
 
-        // 일반 미팅룸 예약
-        if (intent.capacity !== null) {
-          startConversation(event.user, event.channel, 'meeting', intent.parsedTime, intent.endTime, intent.capacity, undefined, 'waiting_title');
-          await client.chat.postEphemeral({
-            channel: event.channel,
-            user: event.user,
-            text: buildTitlePrompt(),
-          });
-        } else {
-          startConversation(event.user, event.channel, 'meeting', intent.parsedTime, intent.endTime);
-          await client.chat.postEphemeral({
-            channel: event.channel,
-            user: event.user,
-            text: buildInfoPrompt(),
-          });
-        }
+        // 일반 미팅룸 예약 — 항상 참석자 입력 단계부터 시작
+        startConversation(event.user, event.channel, 'meeting', intent.parsedTime, intent.endTime, intent.capacity ?? undefined);
+        await client.chat.postEphemeral({
+          channel: event.channel,
+          user: event.user,
+          text: buildInfoPrompt(),
+        });
         return;
       }
 

@@ -15,5 +15,5 @@ function run(cmd) {
 }
 
 run(`"${git}" add -A`);
-run(`"${git}" commit -m "fix: Korean numeral parsing, KST timezone handling, 2-char name search"`);
+run(`"${git}" commit -m "feat: always collect attendees in conversational booking, show confirmation with invitation notice"`);
 run(`"${git}" log --oneline -5`);

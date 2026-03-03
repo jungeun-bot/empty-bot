@@ -7,7 +7,6 @@ import {
   startFocusConversation,
   startEditConversation,
   buildInfoPrompt,
-  buildTitlePrompt,
 } from '../../services/conversation.js';
 
 export function registerDmHandler(app: App): void {
@@ -90,13 +89,9 @@ export function registerDmHandler(app: App): void {
         }
 
         // 일반 미팅룸 예약
-        if (intent.capacity !== null) {
-          startConversation(userId, channelId, 'meeting', intent.parsedTime, intent.endTime, intent.capacity, undefined, 'waiting_title');
-          await client.chat.postMessage({ channel: channelId, text: buildTitlePrompt() });
-        } else {
-          startConversation(userId, channelId, 'meeting', intent.parsedTime, intent.endTime);
-          await client.chat.postMessage({ channel: channelId, text: buildInfoPrompt() });
-        }
+        // 일반 미팅룸 예약 — 항상 참석자 입력 단계부터 시작
+        startConversation(userId, channelId, 'meeting', intent.parsedTime, intent.endTime, intent.capacity ?? undefined);
+        await client.chat.postMessage({ channel: channelId, text: buildInfoPrompt() });
         return;
       }
 

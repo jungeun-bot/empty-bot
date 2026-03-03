@@ -67,7 +67,7 @@ export function clearConversation(userId: string, channelId: string): void {
 
 // 응답 메시지 생성 함수들
 export function buildInfoPrompt(): string {
-  return '참석자 이름을 알려주세요. (본인 제외)\n예: 홍길동, 김철수\n참석자가 없으면 "없음" 또는 "혼자"라고 입력하세요.';
+  return '참석자 이름을 알려주세요. (본인 제외)\n참석자에게 구글 캘린더 초대장이 자동 발송됩니다.\n예: 홍길동, 김철수\n참석자가 없으면 "없음" 또는 "혼자"라고 입력하세요.';
 }
 
 export function buildTitlePrompt(): string {
@@ -141,11 +141,11 @@ export async function processConversationReply(params: ConversationReplyParams):
     case 'waiting_info': {
       const ALONE_KEYWORDS = ['없음', '혼자', '나만', '나 혼자'];
 
-      // 1. 혼자/없음 처리
+      // 1. 혼자/없음 처리 — 사용자 지정 capacity 보존
       if (ALONE_KEYWORDS.some(kw => text.includes(kw))) {
         updateConversation(userId, channelId, {
           stage: 'waiting_title',
-          capacity: 1,
+          capacity: state.capacity ?? 1,
           attendees: [],
         });
         return buildTitlePrompt();
@@ -159,7 +159,7 @@ export async function processConversationReply(params: ConversationReplyParams):
         return '참석자 이름을 입력해주세요. 없으면 "없음"이라고 입력하세요.\n예: 홍길동, 김철수';
       }
 
-      // 4. 이름 있으면 searchUsers 실행 (기존 로직 유지)
+      // 4. 이름 있으면 searchUsers 실행
       const attendees: Attendee[] = [];
       const pendingSelections: { name: string; results: { name: string; email: string }[] }[] = [];
 
@@ -179,20 +179,22 @@ export async function processConversationReply(params: ConversationReplyParams):
         const list = first.results.map((r, i) => `${i + 1}) ${r.name} (${r.email})`).join('\n');
         updateConversation(userId, channelId, {
           stage: 'waiting_attendee_selection',
-          capacity: attendees.length + 1,
+          capacity: Math.max(attendees.length + pendingSelections.length + 1, state.capacity ?? 1),
           attendees,
           pendingSelections,
         });
         return `"${first.name}" 검색 결과:\n${list}\n번호를 선택해주세요.`;
       }
 
-      // 5. capacity = 참석자 수 + 1 (본인)
+      // 5. 전원 확인됨 — 참석자 표시 후 제목 질문
+      const resolvedCapacity = Math.max(attendees.length + 1, state.capacity ?? 1);
       updateConversation(userId, channelId, {
         stage: 'waiting_title',
-        capacity: attendees.length + 1,
+        capacity: resolvedCapacity,
         attendees,
       });
-      return buildTitlePrompt();
+      const attendeeList = attendees.map(a => `• ${a.name} (${a.email})`).join('\n');
+      return `✅ 참석자가 등록되었습니다:\n${attendeeList}\n\n예약 확정 시 참석자에게 구글 캘린더 초대장이 자동 발송됩니다.\n\n${buildTitlePrompt()}`;
     }
 
     case 'waiting_attendee_selection': {
@@ -223,13 +225,15 @@ export async function processConversationReply(params: ConversationReplyParams):
         return `"${next.name}" 검색 결과:\n${list}\n번호를 선택해주세요.`;
       }
 
+      const finalCapacity = Math.max(updatedAttendees.length + 1, state.capacity ?? 1);
       updateConversation(userId, channelId, {
         stage: 'waiting_title',
-        capacity: updatedAttendees.length + 1,
+        capacity: finalCapacity,
         attendees: updatedAttendees,
         pendingSelections: [],
       });
-      return buildTitlePrompt();
+      const attendeeList = updatedAttendees.map(a => `• ${a.name} (${a.email})`).join('\n');
+      return `✅ 참석자가 등록되었습니다:\n${attendeeList}\n\n예약 확정 시 참석자에게 구글 캘린더 초대장이 자동 발송됩니다.\n\n${buildTitlePrompt()}`;
     }
 
     case 'waiting_title': {
