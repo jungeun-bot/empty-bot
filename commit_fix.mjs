@@ -15,5 +15,5 @@ function run(cmd) {
 }
 
 run(`"${git}" add -A`);
-run(`"${git}" commit -m "fix: DM conversational booking missing stage transition to waiting_title"`);
+run(`"${git}" commit -m "fix: add stage param to startConversation, eliminate two-step stage transition pattern"`);
 run(`"${git}" log --oneline -5`);

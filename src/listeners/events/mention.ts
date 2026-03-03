@@ -15,7 +15,6 @@ import {
   startConversation,
   startFocusConversation,
   startEditConversation,
-  updateConversation,
   buildInfoPrompt,
   buildTitlePrompt,
 } from '../../services/conversation.js';
@@ -103,8 +102,7 @@ export function registerMentionHandler(app: App): void {
 
         // 일반 미팅룸 예약
         if (intent.capacity !== null) {
-          startConversation(event.user, event.channel, 'meeting', intent.parsedTime, intent.endTime, intent.capacity);
-          updateConversation(event.user, event.channel, { stage: 'waiting_title' });
+          startConversation(event.user, event.channel, 'meeting', intent.parsedTime, intent.endTime, intent.capacity, undefined, 'waiting_title');
           await client.chat.postEphemeral({
             channel: event.channel,
             user: event.user,

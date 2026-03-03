@@ -28,11 +28,12 @@ export function startConversation(
   endTime: Date,
   capacity?: number,
   attendees?: Attendee[],
+  stage: ConversationStage = 'waiting_info',
 ): ConversationState {
   const state: ConversationState = {
     userId,
     channelId,
-    stage: 'waiting_info',
+    stage,
     roomType,
     parsedTime,
     endTime,
@@ -409,8 +410,7 @@ export async function startFocusConversation(
     return '😔 해당 시간대에 사용 가능한 포커스룸이 없습니다.';
   }
 
-  startConversation(userId, channelId, 'focus', parsedTime, endTime, 1, []);
-  updateConversation(userId, channelId, { stage: 'waiting_focus_select' });
+  startConversation(userId, channelId, 'focus', parsedTime, endTime, 1, [], 'waiting_focus_select');
 
   return buildFocusRoomList(focusRooms);
 }
@@ -422,7 +422,6 @@ export function startEditConversation(
 ): string {
   const now = new Date();
   const endTime = new Date(now.getTime() + 60 * 60 * 1000);
-  startConversation(userId, channelId, 'meeting', now, endTime);
-  updateConversation(userId, channelId, { stage: 'waiting_edit_date' });
+  startConversation(userId, channelId, 'meeting', now, endTime, undefined, undefined, 'waiting_edit_date');
   return '어느 날짜의 예약을 수정/취소하시겠습니까?\n예: 3월 5일, 내일, 3/5';
 }
