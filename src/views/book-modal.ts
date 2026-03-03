@@ -90,7 +90,6 @@ export function buildBookModal(channelId: string, options: BookModalOptions = {}
       {
         type: 'input' as const,
         block_id: 'attendees_block',
-        optional: true,
         label: { type: 'plain_text' as const, text: '👥 참석자 / 그룹', emoji: true },
         element: {
           type: 'multi_external_select' as const,
