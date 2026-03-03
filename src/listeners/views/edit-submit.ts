@@ -1,15 +1,24 @@
 import type { App } from '@slack/bolt';
-import { listRoomEvents, updateBooking, cancelBooking } from '../../services/calendar.js';
+import { listUserBookings, getUserEvent, updateBooking, cancelBooking } from '../../services/calendar.js';
 import { sendChangeNotification, sendCancelNotification } from '../../services/notification.js';
 import type { BookingChanges } from '../../services/notification.js';
 import { buildBookingListModal, buildEditBookingModal, buildCancelConfirmModal } from '../../views/edit-modal.js';
 import { buildProcessingView, buildErrorView } from '../../views/result-views.js';
 import { parseDateTimeString } from '../../views/common.js';
-import { ROOMS, getRoomById } from '../../config/rooms.js';
+import { getRoomById } from '../../config/rooms.js';
 import type { BookingEvent } from '../../types/index.js';
 
+/** Slack 사용자 이메일 조회 헬퍼 */
+async function resolveUserEmail(
+  client: Parameters<Parameters<App['view']>[1]>[0]['client'],
+  userId: string,
+): Promise<string> {
+  const userInfo = await client.users.info({ user: userId });
+  return userInfo.user?.profile?.email ?? '';
+}
+
 export function registerEditSubmit(app: App): void {
-  // 1. 날짜 선택 → 전체 미팅룸 예약 목록 조회
+  // 1. 날짜 선택 → 사용자의 primary calendar에서 봇 예약 조회
   app.view('edit_date_room_select', async ({ ack, view, body, client, logger }) => {
     await ack({
       response_action: 'update',
@@ -31,8 +40,7 @@ export function registerEditSubmit(app: App): void {
       // 예약자 이메일 조회
       let organizerEmail = '';
       try {
-        const userInfo = await client.users.info({ user: body.user.id });
-        organizerEmail = userInfo.user?.profile?.email ?? '';
+        organizerEmail = await resolveUserEmail(client, body.user.id);
       } catch (emailError) {
         logger.error('사용자 이메일 조회 실패:', emailError);
         await client.views.update({
@@ -43,39 +51,15 @@ export function registerEditSubmit(app: App): void {
       }
 
       const date = new Date(dateStr + 'T00:00:00+09:00');
-      const results = await Promise.allSettled(
-        ROOMS.map(room => listRoomEvents(room.id, date))
-      );
-      const allBookings: BookingEvent[] = [];
-      for (let i = 0; i < results.length; i++) {
-        const result = results[i]!;
-        if (result.status === 'fulfilled') {
-          const room = ROOMS[i]!;
-          for (const booking of result.value) {
-            booking.roomName = room.name;
-            booking.roomId = room.id;
-            allBookings.push(booking);
-          }
-        } else {
-          logger.warn(`미팅룸 ${ROOMS[i]!.name} 예약 조회 실패:`, result.reason);
-        }
-      }
 
-      logger.info(`[/수정] 예약자: ${organizerEmail}, 전체 예약: ${allBookings.length}건`);
-      for (const b of allBookings) {
-        logger.info(`  - [${b.roomName}] ${b.summary} | organizer=${b.organizer} creator=${b.creator} attendees=${b.attendees.join(',')}`);
-      }
-
-      // 본인 예약만 필터 (organizer, creator, attendees 모두 확인 — room calendar에서는 organizer가 다를 수 있음)
-      const myBookings = allBookings.filter(b => {
-        const email = organizerEmail.toLowerCase();
-        return (
-          b.organizer.toLowerCase() === email ||
-          b.creator.toLowerCase() === email ||
-          b.attendees.some(a => a.toLowerCase() === email)
-        );
-      });
+      // 사용자의 primary calendar에서 봇이 생성한 예약만 조회
+      const myBookings = await listUserBookings(organizerEmail, date);
       myBookings.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+
+      logger.info(`[/수정] 예약자: ${organizerEmail}, 조회된 예약: ${myBookings.length}건`);
+      for (const b of myBookings) {
+        logger.info(`  - [${b.roomName}] ${b.summary} | room=${b.roomId}`);
+      }
 
       if (myBookings.length === 0) {
         await client.views.update({
@@ -110,15 +94,12 @@ export function registerEditSubmit(app: App): void {
     });
 
     try {
-      const meta = JSON.parse(view.private_metadata ?? '{}') as { date?: string };
-      const dateStr = meta.date ?? '';
-
       const values = view.state.values;
       const selectedValue = values['booking_select_block']?.['booking_radio']?.selected_option?.value ?? '';
       const [roomId = '', eventId = ''] = selectedValue.split('::');
       const action = values['action_select_block']?.['action_radio']?.selected_option?.value ?? 'edit';
 
-      if (!roomId || !eventId || !dateStr) {
+      if (!eventId) {
         await client.views.update({
           view_id: body.view?.id ?? '',
           view: buildErrorView('예약 정보를 찾을 수 없습니다.'),
@@ -126,9 +107,9 @@ export function registerEditSubmit(app: App): void {
         return;
       }
 
-      const date = new Date(dateStr + 'T00:00:00+09:00');
-      const events = await listRoomEvents(roomId, date);
-      const booking = events.find(e => e.eventId === eventId);
+      // 사용자의 primary calendar에서 이벤트 직접 조회
+      const organizerEmail = await resolveUserEmail(client, body.user.id);
+      const booking = await getUserEvent(organizerEmail, eventId);
 
       if (!booking) {
         await client.views.update({
@@ -138,9 +119,12 @@ export function registerEditSubmit(app: App): void {
         return;
       }
 
-      // roomName 채우기
-      const room = getRoomById(roomId);
-      booking.roomName = room?.name ?? '';
+      // roomId가 없는 경우 선택값에서 보완
+      if (!booking.roomId && roomId) {
+        booking.roomId = roomId;
+        const room = getRoomById(roomId);
+        booking.roomName = room?.name ?? '';
+      }
 
       if (action === 'cancel') {
         await client.views.update({
@@ -174,7 +158,6 @@ export function registerEditSubmit(app: App): void {
       const meta = JSON.parse(view.private_metadata ?? '{}') as { eventId?: string; roomId?: string; date?: string };
       const eventId = meta.eventId ?? '';
       const roomId = meta.roomId ?? '';
-      const originalDateStr = meta.date ?? '';
 
       const values = view.state.values;
       const newSummary = values['title_block']?.['title_input']?.value ?? '';
@@ -185,12 +168,10 @@ export function registerEditSubmit(app: App): void {
       const newStartTime = parseDateTimeString(newDateStr, newStartTimeStr);
       const newEndTime = parseDateTimeString(newDateStr, newEndTimeStr);
 
-      // 기존 이벤트 조회
-      const originalDate = new Date(originalDateStr + 'T00:00:00+09:00');
-      const events = await listRoomEvents(roomId, originalDate);
-      const oldBooking = events.find(e => e.eventId === eventId);
+      // 사용자의 primary calendar에서 기존 이벤트 조회
+      const organizerEmail = await resolveUserEmail(client, body.user.id);
+      const oldBooking = await getUserEvent(organizerEmail, eventId);
 
-      // roomName 채우기
       if (!oldBooking) {
         await client.chat.postMessage({
           channel: body.user.id,
@@ -198,8 +179,12 @@ export function registerEditSubmit(app: App): void {
         });
         return;
       }
-      const room = getRoomById(roomId);
-      oldBooking.roomName = room?.name ?? '';
+
+      if (!oldBooking.roomId && roomId) {
+        oldBooking.roomId = roomId;
+        const room = getRoomById(roomId);
+        oldBooking.roomName = room?.name ?? '';
+      }
 
       // changes 구성
       const changes: BookingChanges = {};
@@ -213,15 +198,14 @@ export function registerEditSubmit(app: App): void {
         changes.endTime = { before: oldBooking.endTime, after: newEndTime };
       }
 
+      // user의 primary calendar에서 직접 수정
       await updateBooking(eventId, roomId, {
         summary: newSummary,
         startTime: newStartTime,
         endTime: newEndTime,
-      });
+      }, organizerEmail);
 
-      if (oldBooking) {
-        await sendChangeNotification(client, oldBooking, changes);
-      }
+      await sendChangeNotification(client, oldBooking, changes);
 
       await client.chat.postMessage({
         channel: body.user.id,
@@ -245,14 +229,11 @@ export function registerEditSubmit(app: App): void {
       const meta = JSON.parse(view.private_metadata ?? '{}') as { eventId?: string; roomId?: string; date?: string };
       const eventId = meta.eventId ?? '';
       const roomId = meta.roomId ?? '';
-      const dateStr = meta.date ?? '';
 
-      // 기존 이벤트 조회
-      const date = new Date(dateStr + 'T00:00:00+09:00');
-      const events = await listRoomEvents(roomId, date);
-      const booking = events.find(e => e.eventId === eventId);
+      // 사용자의 primary calendar에서 기존 이벤트 조회
+      const organizerEmail = await resolveUserEmail(client, body.user.id);
+      const booking = await getUserEvent(organizerEmail, eventId);
 
-      // roomName 채우기
       if (!booking) {
         await client.chat.postMessage({
           channel: body.user.id,
@@ -260,10 +241,15 @@ export function registerEditSubmit(app: App): void {
         });
         return;
       }
-      const room = getRoomById(roomId);
-      booking.roomName = room?.name ?? '';
 
-      await cancelBooking(eventId, roomId);
+      if (!booking.roomId && roomId) {
+        booking.roomId = roomId;
+        const room = getRoomById(roomId);
+        booking.roomName = room?.name ?? '';
+      }
+
+      // user의 primary calendar에서 직접 삭제
+      await cancelBooking(eventId, roomId, organizerEmail);
 
       await sendCancelNotification(client, booking);
 

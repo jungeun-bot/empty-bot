@@ -16,5 +16,5 @@ function run(cmd) {
 
 run(`"${git}" add -A`);
 run(`"${git}" status`);
-run(`"${git}" commit -m "fix: /수정 예약 조회 안 되는 버그 수정 - BookingEvent에 creator 필드 추가 - listRoomEvents에서 creator 필드 반환 - edit-submit에서 organizer/creator/attendees 모두 확인하여 본인 예약 필터 - 디버그 로그 추가 (organizer/creator/attendees 출력)"`);
+run(`"${git}" commit -m "fix: /\uC218\uC815 \uC608\uC57D \uC870\uD68C \uADFC\uBCF8 \uC218\uC815 - room calendar \uB300\uC2E0 user primary calendar \uC870\uD68C"`);
 run(`"${git}" log --oneline -3`);

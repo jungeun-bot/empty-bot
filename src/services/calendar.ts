@@ -1,6 +1,6 @@
 import { getCalendarClient, getCalendarClientForUser } from './google-auth.js';
 import { withRoomLock } from './booking-lock.js';
-import { getRoomsByMinCapacity } from '../config/rooms.js';
+import { getRoomsByMinCapacity, ROOMS } from '../config/rooms.js';
 import { env } from '../config/env.js';
 import type { Room, BookingRequest, BookingEvent } from '../types/index.js';
 import { calendar_v3 } from 'googleapis';
@@ -262,6 +262,83 @@ export async function listRoomEvents(roomId: string, date: Date): Promise<Bookin
 }
 
 /**
+ * 사용자의 primary calendar에서 봇이 생성한 예약 목록 조회
+ * room calendar 대신 user calendar을 직접 조회하여 ACL 문제 회피
+ */
+export async function listUserBookings(userEmail: string, date: Date): Promise<BookingEvent[]> {
+  const calendar = getCalendarClientForUser(userEmail);
+  const { startOfDay, endOfDay } = getKSTDayRange(date);
+
+  const response = await calendar.events.list({
+    calendarId: 'primary',
+    timeMin: startOfDay.toISOString(),
+    timeMax: endOfDay.toISOString(),
+    singleEvents: true,
+    orderBy: 'startTime',
+    privateExtendedProperty: ['createdBy=slack-room-bot'],
+  });
+
+  const events = response.data.items ?? [];
+  const roomIdSet = new Set(ROOMS.map(r => r.id));
+
+  return events
+    .filter((e: calendar_v3.Schema$Event) => e.start?.dateTime && e.end?.dateTime)
+    .map((e: calendar_v3.Schema$Event) => {
+      const roomAttendee = e.attendees?.find(a => a.resource === true && roomIdSet.has(a.email ?? ''));
+      const roomId = roomAttendee?.email ?? '';
+      const room = ROOMS.find(r => r.id === roomId);
+      return {
+        eventId: e.id ?? '',
+        summary: e.summary ?? '(제목 없음)',
+        startTime: new Date(e.start!.dateTime!),
+        endTime: new Date(e.end!.dateTime!),
+        organizer: e.organizer?.email ?? '',
+        creator: e.creator?.email ?? '',
+        attendees: (e.attendees ?? []).map((a: calendar_v3.Schema$EventAttendee) => a.email ?? '').filter(Boolean),
+        roomId,
+        roomName: room?.name ?? '',
+      };
+    })
+    .filter(e => e.roomId !== '');
+}
+
+/**
+ * 사용자의 primary calendar에서 특정 이벤트 조회
+ */
+export async function getUserEvent(userEmail: string, eventId: string): Promise<BookingEvent | null> {
+  const calendar = getCalendarClientForUser(userEmail);
+
+  try {
+    const response = await calendar.events.get({
+      calendarId: 'primary',
+      eventId,
+    });
+
+    const e = response.data;
+    if (!e.start?.dateTime || !e.end?.dateTime) return null;
+
+    const roomIdSet = new Set(ROOMS.map(r => r.id));
+    const roomAttendee = e.attendees?.find(a => a.resource === true && roomIdSet.has(a.email ?? ''));
+    const roomId = roomAttendee?.email ?? '';
+    const room = ROOMS.find(r => r.id === roomId);
+
+    return {
+      eventId: e.id ?? '',
+      summary: e.summary ?? '(제목 없음)',
+      startTime: new Date(e.start!.dateTime!),
+      endTime: new Date(e.end!.dateTime!),
+      organizer: e.organizer?.email ?? '',
+      creator: e.creator?.email ?? '',
+      attendees: (e.attendees ?? []).map((a: calendar_v3.Schema$EventAttendee) => a.email ?? '').filter(Boolean),
+      roomId,
+      roomName: room?.name ?? '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 예약 수정
  * GET → merge → PATCH 패턴으로 기존 참석자 유지
  * 반복 이벤트 수정 금지, 과거 이벤트 수정 금지
@@ -270,11 +347,15 @@ export async function updateBooking(
   eventId: string,
   roomId: string,
   updates: { summary?: string; startTime?: Date; endTime?: Date; attendees?: string[] },
+  organizerEmail?: string,
 ): Promise<void> {
-  const calendar = getRoomCalendarClient();
+  const calendar = organizerEmail
+    ? getCalendarClientForUser(organizerEmail)
+    : getRoomCalendarClient();
+  const calendarId = organizerEmail ? 'primary' : roomId;
 
   // 기존 이벤트 조회 (GET → merge → PATCH 패턴)
-  const existing = await calendar.events.get({ calendarId: roomId, eventId });
+  const existing = await calendar.events.get({ calendarId, eventId });
 
   // 반복 이벤트 수정 금지
   if (existing.data.recurringEventId) {
@@ -301,7 +382,7 @@ export async function updateBooking(
   if (newAttendeeEmails.length > 0) patch['attendees'] = mergedAttendees;
 
   await calendar.events.patch({
-    calendarId: roomId,
+    calendarId,
     eventId,
     sendUpdates: 'all',
     requestBody: patch,
@@ -312,12 +393,15 @@ export async function updateBooking(
  * 예약 취소 (이벤트 삭제)
  * 410 Gone / 404 Not Found 그레이스풀 처리
  */
-export async function cancelBooking(eventId: string, roomId: string): Promise<void> {
-  const calendar = getRoomCalendarClient();
+export async function cancelBooking(eventId: string, roomId: string, organizerEmail?: string): Promise<void> {
+  const calendar = organizerEmail
+    ? getCalendarClientForUser(organizerEmail)
+    : getRoomCalendarClient();
+  const calendarId = organizerEmail ? 'primary' : roomId;
 
   try {
     await calendar.events.delete({
-      calendarId: roomId,
+      calendarId,
       eventId,
       sendUpdates: 'all',
     });
