@@ -16,5 +16,5 @@ function run(cmd) {
 
 run(`"${git}" add -A`);
 run(`"${git}" status`);
-run(`"${git}" commit -m "fix: /\uC218\uC815 \uC608\uC57D \uC870\uD68C \uADFC\uBCF8 \uC218\uC815 - room calendar \uB300\uC2E0 user primary calendar \uC870\uD68C"`);
+run(`"${git}" commit -m "fix: privateExtendedProperty \uD544\uD130 \uC81C\uAC70 + \uC624\uB958 \uBA54\uC2DC\uC9C0\uC5D0 \uC870\uD68C \uACC4\uC815 \uD45C\uC2DC"`);
 run(`"${git}" log --oneline -3`);

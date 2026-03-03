@@ -52,9 +52,19 @@ export function registerEditSubmit(app: App): void {
 
       const date = new Date(dateStr + 'T00:00:00+09:00');
 
-      // 사용자의 primary calendar에서 봇이 생성한 예약만 조회
-      const myBookings = await listUserBookings(organizerEmail, date);
-      myBookings.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+      // 사용자의 primary calendar에서 미팅룸 예약 조회
+      let myBookings: BookingEvent[] = [];
+      try {
+        myBookings = await listUserBookings(organizerEmail, date);
+        myBookings.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+      } catch (calError) {
+        logger.error(`[/수정] listUserBookings 실패 (email=${organizerEmail}):`, calError);
+        await client.views.update({
+          view_id: body.view?.id ?? '',
+          view: buildErrorView(`⚠️ 예약 조회 실패: ${calError instanceof Error ? calError.message : '알 수 없는 오류'}`),
+        });
+        return;
+      }
 
       logger.info(`[/수정] 예약자: ${organizerEmail}, 조회된 예약: ${myBookings.length}건`);
       for (const b of myBookings) {
@@ -64,7 +74,7 @@ export function registerEditSubmit(app: App): void {
       if (myBookings.length === 0) {
         await client.views.update({
           view_id: body.view?.id ?? '',
-          view: buildErrorView('해당 날짜에 수정 가능한 예약이 없습니다.'),
+          view: buildErrorView(`해당 날짜에 수정 가능한 예약이 없습니다.\n(조회 계정: ${organizerEmail})`),
         });
         return;
       }

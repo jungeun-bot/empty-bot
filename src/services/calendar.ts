@@ -262,10 +262,11 @@ export async function listRoomEvents(roomId: string, date: Date): Promise<Bookin
 }
 
 /**
- * 사용자의 primary calendar에서 봇이 생성한 예약 목록 조회
+ * 사용자의 primary calendar에서 미팅룸 예약 목록 조회
  * room calendar 대신 user calendar을 직접 조회하여 ACL 문제 회피
+ * room attendee가 있는 이벤트만 필터링
  */
-export async function listUserBookings(userEmail: string, date: Date): Promise<BookingEvent[]> {
+  export async function listUserBookings(userEmail: string, date: Date): Promise<BookingEvent[]> {
   const calendar = getCalendarClientForUser(userEmail);
   const { startOfDay, endOfDay } = getKSTDayRange(date);
 
@@ -275,7 +276,6 @@ export async function listUserBookings(userEmail: string, date: Date): Promise<B
     timeMax: endOfDay.toISOString(),
     singleEvents: true,
     orderBy: 'startTime',
-    privateExtendedProperty: ['createdBy=slack-room-bot'],
   });
 
   const events = response.data.items ?? [];
