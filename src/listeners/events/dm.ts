@@ -4,6 +4,7 @@ import {
   getConversation,
   processConversationReply,
   startConversation,
+  updateConversation,
   startFocusConversation,
   startEditConversation,
   buildInfoPrompt,
@@ -92,6 +93,7 @@ export function registerDmHandler(app: App): void {
         // 일반 미팅룸 예약
         if (intent.capacity !== null) {
           startConversation(userId, channelId, 'meeting', intent.parsedTime, intent.endTime, intent.capacity);
+          updateConversation(userId, channelId, { stage: 'waiting_title' });
           await client.chat.postMessage({ channel: channelId, text: buildTitlePrompt() });
         } else {
           startConversation(userId, channelId, 'meeting', intent.parsedTime, intent.endTime);

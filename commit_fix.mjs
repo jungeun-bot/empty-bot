@@ -15,5 +15,5 @@ function run(cmd) {
 }
 
 run(`"${git}" add -A`);
-run(`"${git}" commit -m "fix: send edit/cancel notifications to channel instead of DM"`);
+run(`"${git}" commit -m "fix: DM conversational booking missing stage transition to waiting_title"`);
 run(`"${git}" log --oneline -5`);
