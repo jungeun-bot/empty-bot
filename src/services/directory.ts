@@ -19,7 +19,7 @@ export async function searchUsers(
   query: string,
   slackClient?: WebClient,
 ): Promise<UserSearchResult[]> {
-  if (query.length < 3) return [];
+  if (query.length < 2) return [];
 
   // Google Directory API 시도
   try {
