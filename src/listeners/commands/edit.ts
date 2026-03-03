@@ -7,7 +7,7 @@ export function registerEditCommand(app: App): void {
     try {
       await client.views.open({
         trigger_id: body.trigger_id,
-        view: buildDateRoomSelectModal(),
+        view: buildDateRoomSelectModal(body.channel_id),
       });
     } catch (error) {
       logger.error('/수정 커맨드 처리 오류:', error);

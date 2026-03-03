@@ -26,6 +26,13 @@ export function registerEditSubmit(app: App): void {
     });
 
     try {
+      // metadata에서 channelId 추출
+      let channelId = '';
+      try {
+        const meta = JSON.parse(view.private_metadata ?? '{}') as { channelId?: string };
+        channelId = meta.channelId ?? '';
+      } catch { /* 무시 */ }
+
       const values = view.state.values;
       const dateStr = values['date_block']?.['date_input']?.selected_date;
 
@@ -81,7 +88,7 @@ export function registerEditSubmit(app: App): void {
 
       await client.views.update({
         view_id: body.view?.id ?? '',
-        view: buildBookingListModal(myBookings),
+        view: buildBookingListModal(myBookings, channelId),
       });
     } catch (error) {
       logger.error('edit_date_room_select 처리 오류:', error);
@@ -104,6 +111,13 @@ export function registerEditSubmit(app: App): void {
     });
 
     try {
+      // metadata에서 channelId 추출
+      let channelId = '';
+      try {
+        const meta0 = JSON.parse(view.private_metadata ?? '{}') as { channelId?: string };
+        channelId = meta0.channelId ?? '';
+      } catch { /* 무시 */ }
+
       const values = view.state.values;
       const selectedValue = values['booking_select_block']?.['booking_radio']?.selected_option?.value ?? '';
       const [roomId = '', eventId = ''] = selectedValue.split('::');
@@ -139,12 +153,12 @@ export function registerEditSubmit(app: App): void {
       if (action === 'cancel') {
         await client.views.update({
           view_id: body.view?.id ?? '',
-          view: buildCancelConfirmModal(booking),
+          view: buildCancelConfirmModal(booking, channelId),
         });
       } else {
         await client.views.update({
           view_id: body.view?.id ?? '',
-          view: buildEditBookingModal(booking),
+          view: buildEditBookingModal(booking, channelId),
         });
       }
     } catch (error) {
@@ -163,11 +177,12 @@ export function registerEditSubmit(app: App): void {
   // 3. 예약 수정 제출
   app.view('edit_booking_submit', async ({ ack, view, body, client, logger }) => {
     await ack({ response_action: 'clear' });
+    const parsedMeta = JSON.parse(view.private_metadata ?? '{}') as { eventId?: string; roomId?: string; date?: string; channelId?: string };
+    const channelId = parsedMeta.channelId ?? '';
 
     try {
-      const meta = JSON.parse(view.private_metadata ?? '{}') as { eventId?: string; roomId?: string; date?: string };
-      const eventId = meta.eventId ?? '';
-      const roomId = meta.roomId ?? '';
+      const eventId = parsedMeta.eventId ?? '';
+      const roomId = parsedMeta.roomId ?? '';
 
       const values = view.state.values;
       const newSummary = values['title_block']?.['title_input']?.value ?? '';
@@ -184,7 +199,7 @@ export function registerEditSubmit(app: App): void {
 
       if (!oldBooking) {
         await client.chat.postMessage({
-          channel: body.user.id,
+          channel: channelId || body.user.id,
           text: '❌ 선택한 예약을 찾을 수 없습니다. 이미 수정 또는 삭제되었을 수 있습니다.',
         });
         return;
@@ -218,14 +233,14 @@ export function registerEditSubmit(app: App): void {
       await sendChangeNotification(client, oldBooking, changes);
 
       await client.chat.postMessage({
-        channel: body.user.id,
+          channel: channelId || body.user.id,
         text: '✅ 예약이 수정되었습니다.',
       });
     } catch (error) {
       logger.error('edit_booking_submit 처리 오류:', error);
       const errorMessage = error instanceof Error ? error.message : '⚠️ 예약 수정 중 오류가 발생했습니다.';
       await client.chat.postMessage({
-        channel: body.user.id,
+          channel: channelId || body.user.id,
         text: `❌ ${errorMessage}`,
       });
     }
@@ -234,11 +249,12 @@ export function registerEditSubmit(app: App): void {
   // 4. 예약 취소 확인
   app.view('edit_cancel_confirm', async ({ ack, view, body, client, logger }) => {
     await ack({ response_action: 'clear' });
+    const parsedMeta = JSON.parse(view.private_metadata ?? '{}') as { eventId?: string; roomId?: string; date?: string; channelId?: string };
+    const channelId = parsedMeta.channelId ?? '';
 
     try {
-      const meta = JSON.parse(view.private_metadata ?? '{}') as { eventId?: string; roomId?: string; date?: string };
-      const eventId = meta.eventId ?? '';
-      const roomId = meta.roomId ?? '';
+      const eventId = parsedMeta.eventId ?? '';
+      const roomId = parsedMeta.roomId ?? '';
 
       // 사용자의 primary calendar에서 기존 이벤트 조회
       const organizerEmail = await resolveUserEmail(client, body.user.id);
@@ -246,7 +262,7 @@ export function registerEditSubmit(app: App): void {
 
       if (!booking) {
         await client.chat.postMessage({
-          channel: body.user.id,
+          channel: channelId || body.user.id,
           text: '❌ 선택한 예약을 찾을 수 없습니다. 이미 삭제되었을 수 있습니다.',
         });
         return;
@@ -264,14 +280,14 @@ export function registerEditSubmit(app: App): void {
       await sendCancelNotification(client, booking);
 
       await client.chat.postMessage({
-        channel: body.user.id,
+          channel: channelId || body.user.id,
         text: '🗑️ 예약이 취소되었습니다.',
       });
     } catch (error) {
       logger.error('edit_cancel_confirm 처리 오류:', error);
       const errorMessage = error instanceof Error ? error.message : '⚠️ 예약 취소 중 오류가 발생했습니다.';
       await client.chat.postMessage({
-        channel: body.user.id,
+          channel: channelId || body.user.id,
         text: `❌ ${errorMessage}`,
       });
     }

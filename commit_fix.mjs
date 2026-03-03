@@ -15,5 +15,5 @@ function run(cmd) {
 }
 
 run(`"${git}" add -A`);
-run(`"${git}" commit -m "fix: remove a.resource===true filter, use roomIdSet+suffix matching for reliable room detection"`);
+run(`"${git}" commit -m "fix: send edit/cancel notifications to channel instead of DM"`);
 run(`"${git}" log --oneline -5`);

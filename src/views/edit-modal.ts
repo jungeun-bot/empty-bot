@@ -36,7 +36,7 @@ function generateEditTimeOptions() {
   return options;
 }
 
-export function buildDateRoomSelectModal() {
+export function buildDateRoomSelectModal(channelId?: string) {
   return {
     type: 'modal' as const,
     callback_id: 'edit_date_room_select',
@@ -55,6 +55,7 @@ export function buildDateRoomSelectModal() {
       text: '닫기',
       emoji: true,
     },
+    private_metadata: JSON.stringify({ channelId: channelId ?? '' }),
     blocks: [
       {
         type: 'input' as const,
@@ -78,7 +79,7 @@ export function buildDateRoomSelectModal() {
   };
 }
 
-export function buildBookingListModal(bookings: BookingEvent[]) {
+export function buildBookingListModal(bookings: BookingEvent[], channelId?: string) {
   const date = formatDateYMD(bookings[0]!.startTime);
 
   const bookingOptions = bookings.slice(0, 10).map(b => {
@@ -112,7 +113,7 @@ export function buildBookingListModal(bookings: BookingEvent[]) {
       text: '닫기',
       emoji: true,
     },
-    private_metadata: JSON.stringify({ date }),
+    private_metadata: JSON.stringify({ date, channelId: channelId ?? '' }),
     blocks: [
       {
         type: 'input' as const,
@@ -148,7 +149,7 @@ export function buildBookingListModal(bookings: BookingEvent[]) {
   };
 }
 
-export function buildEditBookingModal(booking: BookingEvent) {
+export function buildEditBookingModal(booking: BookingEvent, channelId?: string) {
   const timeOptions = generateEditTimeOptions();
   const currentStartTime = extractTimeStr(booking.startTime);
   const currentEndTime = extractTimeStr(booking.endTime);
@@ -175,7 +176,7 @@ export function buildEditBookingModal(booking: BookingEvent) {
       text: '닫기',
       emoji: true,
     },
-    private_metadata: JSON.stringify({ eventId: booking.eventId, roomId: booking.roomId, date: currentDate }),
+    private_metadata: JSON.stringify({ eventId: booking.eventId, roomId: booking.roomId, date: currentDate, channelId: channelId ?? '' }),
     blocks: [
       {
         type: 'input' as const,
@@ -239,7 +240,7 @@ export function buildEditBookingModal(booking: BookingEvent) {
   };
 }
 
-export function buildCancelConfirmModal(booking: BookingEvent) {
+export function buildCancelConfirmModal(booking: BookingEvent, channelId?: string) {
   const date = formatDateYMD(booking.startTime);
 
   return {
@@ -260,7 +261,7 @@ export function buildCancelConfirmModal(booking: BookingEvent) {
       text: '닫기',
       emoji: true,
     },
-    private_metadata: JSON.stringify({ eventId: booking.eventId, roomId: booking.roomId, date }),
+    private_metadata: JSON.stringify({ eventId: booking.eventId, roomId: booking.roomId, date, channelId: channelId ?? '' }),
     blocks: [
       {
         type: 'section' as const,
