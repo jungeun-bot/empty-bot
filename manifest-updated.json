@@ -2,7 +2,8 @@
     "display_information": {
         "name": "빈방있소",
         "description": "여러분들을 위한 회의실 예약봇!",
-        "background_color": "#000000"
+        "background_color": "#000000",
+        "long_description": "🏠 *빈방있소 사용 가이드*\r\n\r\n안녕하세요! 회의실 예약 봇 *빈방있소*가 도착했습니다.\r\n이제 슬랙에서 바로 회의실 예약, 조회, 변경이 가능해요!\r\n\r\n\r\n📌 *기본 예약*\r\n`/예약` 입력 → 모달에서 예약 유형(미팅룸/포커스룸), 회의 이름, 날짜, 시작·종료 시간 선택 → 참석자 검색 후 추가 → 완료!\r\n외부 게스트가 있다면 이메일 입력 시 구글 캘린더 초대장이 자동 발송됩니다.\r\n\r\n\r\n⚡ *즉시 예약 (급한 회의)*\r\n`/즉시예약 인원수` 입력 → 지금 바로 사용 가능한 회의실 목록이 표시됩니다.\r\n예) `/즉시예약 4`\r\n\r\n\r\n✏️ *예약 변경/취소*\r\n`/수정` 입력 → 날짜 선택 → 내 예약 조회 → 수정 또는 취소\r\n\r\n\r\n🚨 *회의실 불편사항 신고*\r\n`/신고` 입력 → 내용 작성 시 담당자에게 바로 전달됩니다.\r\n\r\n\r\n💬 *자연어로도 가능!*\r\n커맨드 대신 빈방있소를 멘션하거나 DM으로 자연스럽게 말해도 돼요.\r\n예) `@빈방있소 내일 오후 2시 4명 미팅룸 예약해줘`\r\n\r\n\r\n궁금한 점이 있으면 빈방있소에게 DM으로 물어보세요! 🙌"
     },
     "features": {
         "bot_user": {
@@ -78,7 +79,8 @@
         "org_deploy_enabled": true,
         "socket_mode_enabled": true,
         "token_rotation_enabled": false,
-        "function_runtime": "remote"
+        "function_runtime": "remote",
+        "hermes_app_type": "remote"
     },
     "functions": {
         "book_room": {
