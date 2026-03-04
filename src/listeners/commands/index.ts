@@ -5,6 +5,7 @@ import { registerEditCommand } from './edit.js';
 import { registerSetupBookingCommand } from './setup-booking.js';
 import { registerReportCommand } from './report.js';
 import { registerHelpCommand } from './help.js';
+import { registerRecurringCommand } from './recurring.js';
 
 export function registerCommands(app: App): void {
   registerBookCommand(app);
@@ -13,4 +14,5 @@ export function registerCommands(app: App): void {
   registerSetupBookingCommand(app);
   registerReportCommand(app);
   registerHelpCommand(app);
+  registerRecurringCommand(app);
 }

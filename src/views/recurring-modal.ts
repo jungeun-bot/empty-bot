@@ -1,0 +1,170 @@
+import { generateTimeOptions } from './common.js';
+
+/** /정기회의 모달 옵션 (dispatch_action 재구성용) */
+export interface RecurringModalOptions {
+  showGuestEmails?: boolean;
+  initialValues?: {
+    title?: string;
+    date?: string;
+    startTime?: { text: { type: 'plain_text'; text: string }; value: string };
+    endTime?: { text: { type: 'plain_text'; text: string }; value: string };
+    frequency?: { text: { type: 'plain_text'; text: string }; value: string };
+    until?: string;
+    attendees?: Array<{ text: { type: 'plain_text'; text: string }; value: string }>;
+    guestEmails?: string;
+  };
+}
+
+export function buildRecurringModal(channelId: string, options: RecurringModalOptions = {}) {
+  const timeOptions = generateTimeOptions();
+  const iv = options.initialValues;
+
+  return {
+    type: 'modal' as const,
+    callback_id: 'recurring_modal',
+    private_metadata: JSON.stringify({ channelId }),
+    title: { type: 'plain_text' as const, text: '정기 회의 예약', emoji: true },
+    submit: { type: 'plain_text' as const, text: '예약하기', emoji: true },
+    close: { type: 'plain_text' as const, text: '취소', emoji: true },
+    blocks: [
+      {
+        type: 'section' as const,
+        block_id: 'room_type_block',
+        text: { type: 'mrkdwn' as const, text: '*예약 유형을 선택하세요:*' },
+        accessory: {
+          type: 'radio_buttons' as const,
+          action_id: 'recurring_type_select',
+          initial_option: { text: { type: 'plain_text' as const, text: '🏢 미팅룸', emoji: true }, value: 'meeting' },
+          options: [
+            { text: { type: 'plain_text' as const, text: '🏢 미팅룸', emoji: true }, value: 'meeting' },
+            { text: { type: 'plain_text' as const, text: '🎯 포커스룸 (1인용)', emoji: true }, value: 'focus' },
+          ],
+        },
+      },
+      {
+        type: 'input' as const,
+        block_id: 'title_block',
+        label: { type: 'plain_text' as const, text: '📝 회의 이름', emoji: true },
+        element: {
+          type: 'plain_text_input' as const,
+          action_id: 'title_input',
+          placeholder: { type: 'plain_text' as const, text: '예: 주간 미팅, 스프린트 회의', emoji: false },
+          ...(iv?.title ? { initial_value: iv.title } : {}),
+        },
+      },
+      {
+        type: 'input' as const,
+        block_id: 'date_block',
+        label: { type: 'plain_text' as const, text: '📅 첫 회의 날짜', emoji: true },
+        hint: { type: 'plain_text' as const, text: '매주/격주 선택 시 이 날짜의 요일로 반복됩니다.', emoji: false },
+        element: {
+          type: 'datepicker' as const,
+          action_id: 'date_input',
+          placeholder: { type: 'plain_text' as const, text: '날짜를 선택하세요', emoji: false },
+          ...(iv?.date ? { initial_date: iv.date } : {}),
+        },
+      },
+      {
+        type: 'input' as const,
+        block_id: 'start_time_block',
+        label: { type: 'plain_text' as const, text: '🕐 시작 시간', emoji: true },
+        element: {
+          type: 'static_select' as const,
+          action_id: 'start_time_input',
+          placeholder: { type: 'plain_text' as const, text: '시작 시간 선택', emoji: false },
+          options: timeOptions,
+          ...(iv?.startTime ? { initial_option: iv.startTime } : {}),
+        },
+      },
+      {
+        type: 'input' as const,
+        block_id: 'end_time_block',
+        label: { type: 'plain_text' as const, text: '🕐 종료 시간', emoji: true },
+        element: {
+          type: 'static_select' as const,
+          action_id: 'end_time_input',
+          placeholder: { type: 'plain_text' as const, text: '종료 시간 선택', emoji: false },
+          options: timeOptions,
+          ...(iv?.endTime ? { initial_option: iv.endTime } : {}),
+        },
+      },
+      {
+        type: 'input' as const,
+        block_id: 'frequency_block',
+        label: { type: 'plain_text' as const, text: '🔁 반복 주기', emoji: true },
+        element: {
+          type: 'static_select' as const,
+          action_id: 'frequency_input',
+          placeholder: { type: 'plain_text' as const, text: '반복 주기 선택', emoji: false },
+          options: [
+            { text: { type: 'plain_text' as const, text: '매주', emoji: false }, value: 'weekly' },
+            { text: { type: 'plain_text' as const, text: '격주 (2주마다)', emoji: false }, value: 'biweekly' },
+            { text: { type: 'plain_text' as const, text: '매일 (평일만)', emoji: false }, value: 'weekdays' },
+            { text: { type: 'plain_text' as const, text: '매월', emoji: false }, value: 'monthly' },
+          ],
+          ...(iv?.frequency ? { initial_option: iv.frequency } : {}),
+        },
+      },
+      {
+        type: 'input' as const,
+        block_id: 'until_block',
+        label: { type: 'plain_text' as const, text: '📆 반복 종료일', emoji: true },
+        hint: { type: 'plain_text' as const, text: '이 날짜까지 반복됩니다.', emoji: false },
+        element: {
+          type: 'datepicker' as const,
+          action_id: 'until_input',
+          placeholder: { type: 'plain_text' as const, text: '종료일을 선택하세요', emoji: false },
+          ...(iv?.until ? { initial_date: iv.until } : {}),
+        },
+      },
+      {
+        type: 'input' as const,
+        block_id: 'attendees_block',
+        label: { type: 'plain_text' as const, text: '👥 참석자 / 그룹', emoji: true },
+        optional: true,
+        element: {
+          type: 'multi_external_select' as const,
+          action_id: 'attendees_input',
+          placeholder: { type: 'plain_text' as const, text: '이름 또는 그룹명으로 검색', emoji: false },
+          min_query_length: 0,
+          ...(iv?.attendees && iv.attendees.length > 0 ? { initial_options: iv.attendees } : {}),
+        },
+      },
+      // 외부 게스트 토글
+      {
+        type: 'input' as const,
+        block_id: 'guest_radio_block',
+        dispatch_action: true,
+        optional: true,
+        label: { type: 'plain_text' as const, text: '🧑‍💼 외부 게스트', emoji: true },
+        element: {
+          type: 'radio_buttons' as const,
+          action_id: 'recurring_guest_select',
+          initial_option: options.showGuestEmails
+            ? { text: { type: 'plain_text' as const, text: '있음', emoji: false }, value: 'yes' }
+            : { text: { type: 'plain_text' as const, text: '없음', emoji: false }, value: 'no' },
+          options: [
+            { text: { type: 'plain_text' as const, text: '없음', emoji: false }, value: 'no' },
+            { text: { type: 'plain_text' as const, text: '있음', emoji: false }, value: 'yes' },
+          ],
+        },
+      },
+      ...(options.showGuestEmails ? [
+        {
+          type: 'input' as const,
+          block_id: 'guest_emails_block',
+          optional: true,
+          label: { type: 'plain_text' as const, text: '📧 게스트 이메일', emoji: true },
+          hint: { type: 'plain_text' as const, text: '쉼표(,) 또는 줄바꿈으로 구분하여 입력하세요.', emoji: false },
+          element: {
+            type: 'plain_text_input' as const,
+            action_id: 'guest_emails_input',
+            multiline: true,
+            placeholder: { type: 'plain_text' as const, text: 'guest1@example.com, guest2@example.com', emoji: false },
+            ...(iv?.guestEmails ? { initial_value: iv.guestEmails } : {}),
+          },
+        },
+      ] : []),
+    ],
+  };
+}

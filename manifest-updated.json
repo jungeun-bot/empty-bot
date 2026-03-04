@@ -31,6 +31,12 @@
                 "command": "/setup-booking",
                 "description": "메세지 고정",
                 "should_escape": false
+            },
+            {
+                "command": "/정기회의",
+                "description": "정기 회의 예약 (반복 일정)",
+                "usage_hint": "",
+                "should_escape": false
             }
         ]
     },

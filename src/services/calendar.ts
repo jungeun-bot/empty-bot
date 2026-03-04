@@ -56,7 +56,7 @@ export async function getAvailableRooms(
  * responseStatus polling으로 auto-decline 감지
  */
 export async function createBooking(request: BookingRequest): Promise<string> {
-  const { room, startTime, endTime, title, attendees, organizer } = request;
+  const { room, startTime, endTime, title, attendees, organizer, recurrence } = request;
 
   return withRoomLock(room.id, async () => {
     // Lock 내부에서 FreeBusy 재확인 (race condition 방지)
@@ -105,6 +105,7 @@ export async function createBooking(request: BookingRequest): Promise<string> {
             createdBy: 'slack-room-bot',
           },
         },
+        ...(recurrence && recurrence.length > 0 ? { recurrence } : {}),
       },
     });
 

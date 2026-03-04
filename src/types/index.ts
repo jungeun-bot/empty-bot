@@ -14,6 +14,7 @@ export interface BookingRequest {
   title: string;
   attendees: Attendee[];
   organizer: string; // 예약자 이메일
+  recurrence?: string[]; // RRULE (정기 회의용, 예: ['RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20251231T235959Z'])
 }
 
 // 참석자
