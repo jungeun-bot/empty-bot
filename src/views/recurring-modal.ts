@@ -121,7 +121,6 @@ export function buildRecurringModal(channelId: string, options: RecurringModalOp
         type: 'input' as const,
         block_id: 'attendees_block',
         label: { type: 'plain_text' as const, text: '👥 참석자 / 그룹', emoji: true },
-        optional: true,
         element: {
           type: 'multi_external_select' as const,
           action_id: 'attendees_input',

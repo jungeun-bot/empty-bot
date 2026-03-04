@@ -41,6 +41,15 @@ export function buildSetupPanelMessage(): KnownBlock[] {
           },
           action_id: 'open_report_modal',
         },
+        {
+          type: 'button' as const,
+          text: {
+            type: 'plain_text' as const,
+            text: '🔁 정기회의',
+            emoji: true,
+          },
+          action_id: 'open_recurring_modal',
+        },
       ],
     },
   ];

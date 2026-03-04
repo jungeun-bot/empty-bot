@@ -15,5 +15,5 @@ function run(cmd) {
 }
 
 run(`"${git}" add -A`);
-run(`"${git}" commit -m "feat: add /\uc815\uae30\ud68c\uc758 command with Google Calendar RRULE recurring events"`);
+run(`"${git}" commit -m "feat: add recurring button to setup panel, update report modal, require attendees, set admin ID"`);
 run(`"${git}" log --oneline -5`);

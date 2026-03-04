@@ -16,7 +16,7 @@ export function buildReportModal() {
           options: [
             { text: { type: 'plain_text' as const, text: '건의사항', emoji: false }, value: 'suggestion' },
             { text: { type: 'plain_text' as const, text: '불편사항', emoji: false }, value: 'complaint' },
-            { text: { type: 'plain_text' as const, text: '기타', emoji: false }, value: 'other' },
+            { text: { type: 'plain_text' as const, text: '기타 (중개사를 위한 칭찬은 언제나 환영❤️)', emoji: true }, value: 'other' },
           ],
         },
       },
