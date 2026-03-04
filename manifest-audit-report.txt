@@ -1,0 +1,208 @@
+================================================================================
+         manifest-updated.json 전수 점검 보고서
+         작성일: 2026-03-05
+================================================================================
+
+1. 점검 범위
+--------------------------------------------------------------------------------
+- 대상 파일: manifest-updated.json
+- 비교 대상: src/ 디렉토리 내 모든 소스코드 (23개 파일)
+- 참조 스펙: Slack App Manifest JSON Schema v2 (slackapi/manifest-schema)
+- 점검 항목: 슬래시 커맨드, 커스텀 함수, 이벤트 구독, OAuth 스코프, JSON 유효성
+
+
+2. 발견된 오류 (총 8건)
+--------------------------------------------------------------------------------
+
+[오류 #1] 심각도: CRITICAL
+  항목: slash_commands[0].command
+  수정 전: "/book"
+  수정 후: "/예약"
+  원인: 매니페스트에 영어 커맨드명이 작성되어 있었으나, 소스코드(book.ts)는
+        app.command('/예약')으로 한국어 커맨드를 등록함.
+        매니페스트 적용 시 Slack이 기존 /예약 커맨드를 /book으로 교체하여
+        사용자가 /예약 입력 시 "알 수 없는 명령" 오류 발생.
+
+[오류 #2] 심각도: CRITICAL
+  항목: slash_commands[1].command
+  수정 전: "/now-book"
+  수정 후: "/즉시예약"
+  원인: 동일. 소스코드(now-book.ts)는 app.command('/즉시예약') 등록.
+
+[오류 #3] 심각도: CRITICAL
+  항목: slash_commands[2].command
+  수정 전: "/edit"
+  수정 후: "/수정"
+  원인: 동일. 소스코드(edit.ts)는 app.command('/수정') 등록.
+
+[오류 #4] 심각도: CRITICAL
+  항목: slash_commands[3].command
+  수정 전: "/setup-booking"
+  수정 후: "/설치"
+  원인: 동일. 소스코드(setup-booking.ts)는 app.command('/설치') 등록.
+  추가: description도 "메세지 고정" → "채널에 예약 패널 설치 및 고정"으로
+        사용자가 이해하기 쉽게 수정.
+
+[오류 #5] 심각도: CRITICAL
+  항목: slash_commands (누락)
+  수정 전: /신고 커맨드가 매니페스트에 없음
+  수정 후: /신고 커맨드 추가 (description: "회의실 이용 관련 신고/건의 접수")
+  원인: 소스코드(report.ts)에서 app.command('/신고')를 등록하지만
+        매니페스트에 정의되지 않아 Slack이 해당 커맨드를 인식하지 못함.
+
+[오류 #6] 심각도: CRITICAL
+  항목: slash_commands (누락)
+  수정 전: /사용방법 커맨드가 매니페스트에 없음
+  수정 후: /사용방법 커맨드 추가 (description: "봇 사용 가이드 표시")
+  원인: 소스코드(help.ts)에서 app.command('/사용방법')를 등록하지만
+        매니페스트에 정의되지 않아 Slack이 해당 커맨드를 인식하지 못함.
+
+[오류 #7] 심각도: MODERATE
+  항목: oauth_config.scopes.bot (누락)
+  수정 전: usergroups:read 스코프 없음
+  수정 후: usergroups:read 스코프 추가
+  원인: src/listeners/views/recurring-submit.ts에서
+        client.usergroups.users.list() API를 호출하는데,
+        이 API는 usergroups:read 스코프가 필요함.
+        스코프 없이 호출 시 "missing_scope" 오류 발생.
+
+[오류 #8] 심각도: LOW (추가 개선)
+  항목: /사용방법 도움말에 /정기회의 누락
+  수정 전: help.ts의 도움말 텍스트에 /정기회의 커맨드 설명 없음
+  수정 후: /정기회의 커맨드 설명 추가
+        ("매주·격주·매일·매월 반복되는 정기 회의를 예약합니다.
+         반복 종료일과 참석자를 지정할 수 있습니다.")
+  원인: /정기회의 커맨드가 새로 추가되었으나 도움말에 반영되지 않음.
+
+
+3. 기존에 이미 해결된 오류 (이전 세션)
+--------------------------------------------------------------------------------
+[기해결] usage_hint: "" (빈 문자열)
+  - /정기회의 커맨드의 usage_hint가 빈 문자열이었음
+  - Slack 스펙에서 usage_hint는 minLength: 1 → 빈 문자열은 유효성 검사 실패
+  - 해당 필드 자체를 제거하여 해결 (usage_hint는 선택 필드)
+
+
+4. 정상 확인된 항목
+--------------------------------------------------------------------------------
+[OK] display_information
+  - name: "빈방있소" (1~35자 제한 내)
+  - description: 정상 (1~140자 제한 내)
+  - background_color: "#000000" (정규식 패턴 일치)
+
+[OK] features.bot_user
+  - display_name: "bingbang" (1~80자, 허용 문자만 사용)
+  - always_online: true
+
+[OK] 커스텀 함수 4개 (코드와 일치)
+  - book_room: 소스코드(book-room.ts) app.function('book_room') 일치
+  - edit_booking: 소스코드(edit-booking.ts) app.function('edit_booking') 일치
+  - cancel_booking: 소스코드(cancel-booking.ts) app.function('cancel_booking') 일치
+  - book_today_meeting: 소스코드(book-today-meeting.ts) app.function('book_today_meeting') 일치
+
+[OK] 이벤트 구독
+  - app_mention: 소스코드(mention.ts) app.event('app_mention') 일치
+  - message.im: 소스코드(dm.ts) app.message() + channel_type 'im' 필터 일치
+  - function_executed: 커스텀 함수 사용에 필수
+
+[OK] settings
+  - org_deploy_enabled: true (커스텀 함수 Workflow Builder 연동에 필수)
+  - socket_mode_enabled: true (Socket Mode 사용)
+  - function_runtime: "remote" (자체 호스팅 Bolt 앱에 올바른 값)
+  - interactivity.is_enabled: true (모달/액션 사용에 필수)
+  - token_rotation_enabled: false
+
+[OK] OAuth 스코프 (수정 후)
+  - pins:write: client.pins.add() 호출에 필요
+  - app_mentions:read: app_mention 이벤트 수신에 필요
+  - chat:write: client.chat.postMessage/postEphemeral 호출에 필요
+  - commands: 슬래시 커맨드 등록에 필요
+  - im:history: message.im 이벤트 수신에 필요
+  - im:write: DM 채널 쓰기에 필요
+  - users:read: client.users.info/list 호출에 필요
+  - users:read.email: 사용자 이메일 조회에 필요
+  - usergroups:read: client.usergroups.users.list 호출에 필요 (신규 추가)
+
+[OK] JSON 구문 유효성
+  - JSON.parse() 성공
+  - 349줄, 문법 오류 없음
+
+[OK] TypeScript 빌드
+  - npx tsc --noEmit 성공 (help.ts 수정 후)
+
+
+5. 사용자 시나리오별 시뮬레이션 결과
+--------------------------------------------------------------------------------
+
+시나리오 1: 사용자가 /예약 입력
+  수정 전: Slack이 /book만 인식 → "알 수 없는 명령" 오류
+  수정 후: /예약 매니페스트에 등록됨 → 예약 모달 정상 열림
+
+시나리오 2: 사용자가 /즉시예약 4 입력
+  수정 전: Slack이 /now-book만 인식 → "알 수 없는 명령" 오류
+  수정 후: /즉시예약 매니페스트에 등록됨 → 즉시 예약 정상 동작
+
+시나리오 3: 사용자가 /수정 입력
+  수정 전: Slack이 /edit만 인식 → "알 수 없는 명령" 오류
+  수정 후: /수정 매니페스트에 등록됨 → 수정 모달 정상 열림
+
+시나리오 4: 사용자가 /설치 입력
+  수정 전: Slack이 /setup-booking만 인식 → "알 수 없는 명령" 오류
+  수정 후: /설치 매니페스트에 등록됨 → 설치 패널 정상 생성
+
+시나리오 5: 사용자가 /신고 입력
+  수정 전: 매니페스트에 없음 → "알 수 없는 명령" 오류
+  수정 후: /신고 매니페스트에 추가됨 → 신고 모달 정상 열림
+
+시나리오 6: 사용자가 /사용방법 입력
+  수정 전: 매니페스트에 없음 → "알 수 없는 명령" 오류
+  수정 후: /사용방법 매니페스트에 추가됨 → 도움말 정상 표시
+
+시나리오 7: 사용자가 /정기회의 입력
+  수정 전: 매니페스트에 올바르게 등록됨
+  수정 후: 변경 없음 → 정기회의 모달 정상 열림
+
+시나리오 8: 정기회의 예약 시 참석자 그룹 선택
+  수정 전: usergroups:read 스코프 누락 → API 호출 실패 (missing_scope)
+  수정 후: 스코프 추가됨 → 그룹 멤버 조회 정상 동작
+
+시나리오 9: 사용자가 /사용방법 입력 후 /정기회의 확인
+  수정 전: 도움말에 /정기회의 설명 없음 → 사용자가 기능 존재를 모름
+  수정 후: /정기회의 설명 추가됨 → 사용법 안내 포함
+
+시나리오 10: 워크플로 빌더에서 book_today_meeting 함수 사용
+  상태: 매니페스트에 올바르게 정의됨 → 정상 동작
+  참고: org_deploy_enabled: true 및 function_runtime: "remote" 필수
+
+시나리오 11: 봇 @멘션으로 자연어 예약
+  상태: app_mention 이벤트 등록됨, app_mentions:read 스코프 있음 → 정상
+
+시나리오 12: DM으로 대화형 예약
+  상태: message.im 이벤트 등록됨, im:history 스코프 있음 → 정상
+
+
+6. 수정된 파일 목록
+--------------------------------------------------------------------------------
+1. manifest-updated.json — 슬래시 커맨드 7개 교정, 스코프 추가
+2. src/listeners/commands/help.ts — /정기회의 도움말 추가
+
+
+7. 적용 방법
+--------------------------------------------------------------------------------
+1. manifest-updated.json 열기:
+   경로: C:\Users\황병하\slack-room-bot\manifest-updated.json
+
+2. 파일 내용 전체 복사
+
+3. https://api.slack.com/apps 접속 → 앱 선택 → App Manifest 탭
+
+4. 기존 내용을 모두 지우고 복사한 내용 붙여넣기
+
+5. Save Changes 클릭
+
+6. 스코프 변경(usergroups:read 추가)으로 인해 앱 재설치 필요할 수 있음
+   → "Reinstall App" 버튼이 나타나면 클릭하여 재설치
+
+================================================================================
+                          점검 완료
+================================================================================

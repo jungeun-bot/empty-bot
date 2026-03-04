@@ -4,13 +4,13 @@ const DEFAULT_ROOMS: Room[] = [
   {
     id: 'meeting-room-1@resource.calendar.google.com',
     name: 'Meeting Room 1',
-    capacity: 8,
+    capacity: 12,
     type: 'meeting',
   },
   {
     id: 'meeting-room-2@resource.calendar.google.com',
     name: 'Meeting Room 2',
-    capacity: 8,
+    capacity: 16,
     type: 'meeting',
   },
   {

@@ -11,31 +11,40 @@
         },
         "slash_commands": [
             {
-                "command": "/book",
+                "command": "/예약",
                 "description": "회의실 예약 및 조회",
                 "usage_hint": "[시간] [인원] [참석자]",
                 "should_escape": false
             },
             {
-                "command": "/now-book",
+                "command": "/즉시예약",
                 "description": "지금 바로 회의실 예약",
                 "usage_hint": "[인원]",
                 "should_escape": false
             },
             {
-                "command": "/edit",
+                "command": "/수정",
                 "description": "회의실 예약 수정/취소",
                 "should_escape": false
             },
             {
-                "command": "/setup-booking",
-                "description": "메세지 고정",
+                "command": "/설치",
+                "description": "채널에 예약 패널 설치 및 고정",
+                "should_escape": false
+            },
+            {
+                "command": "/신고",
+                "description": "회의실 이용 관련 신고/건의 접수",
+                "should_escape": false
+            },
+            {
+                "command": "/사용방법",
+                "description": "봇 사용 가이드 표시",
                 "should_escape": false
             },
             {
                 "command": "/정기회의",
                 "description": "정기 회의 예약 (반복 일정)",
-                "usage_hint": "",
                 "should_escape": false
             }
         ]
@@ -50,7 +59,8 @@
                 "im:history",
                 "im:write",
                 "users:read",
-                "users:read.email"
+                "users:read.email",
+                "usergroups:read"
             ]
         }
     },
