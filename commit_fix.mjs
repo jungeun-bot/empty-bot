@@ -15,5 +15,5 @@ function run(cmd) {
 }
 
 run(`"${git}" add -A`);
-run(`"${git}" commit -m "feat: add recurring button to setup panel, update report modal, require attendees, set admin ID"`);
+run(`"${git}" commit -m "fix: show report confirmation modal instead of DM, add recurring button to panel, update report options"`);
 run(`"${git}" log --oneline -5`);
