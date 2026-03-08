@@ -6,7 +6,7 @@ export function buildSetupPanelMessage(): KnownBlock[] {
       type: 'section' as const,
       text: {
         type: 'mrkdwn' as const,
-        text: '*🏢 미팅룸 예약 시스템*\n아래 버튼을 클릭하여 미팅룸을 예약하거나 기존 예약을 수정/취소할 수 있습니다.',
+        text: '*🏢 미팅룸/포커스룸 예약 시스템*\n아래 버튼을 클릭하여 미팅룸/포커스룸을 예약하거나 기존 예약을 수정/취소할 수 있습니다.',
       },
     },
     { type: 'divider' as const },
