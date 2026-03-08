@@ -50,6 +50,11 @@ export function buildSetupPanelMessage(): KnownBlock[] {
           },
           action_id: 'open_recurring_modal',
         },
+        {
+          type: 'button' as const,
+          text: { type: 'plain_text' as const, text: '📊 현황', emoji: true },
+          action_id: 'open_status_modal',
+        },
       ],
     },
   ];

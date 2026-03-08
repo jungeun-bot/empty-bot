@@ -3,6 +3,7 @@ import { buildBookModal } from '../../views/book-modal.js';
 import { buildDateRoomSelectModal } from '../../views/edit-modal.js';
 import { buildReportModal } from '../../views/report-modal.js';
 import { buildRecurringModal } from '../../views/recurring-modal.js';
+import { buildStatusModal } from '../../views/status-modal.js';
 
 export function registerSetupPanelActions(app: App): void {
   // 예약 버튼 → 예약 모달 열기
@@ -72,6 +73,22 @@ export function registerSetupPanelActions(app: App): void {
       });
     } catch (error) {
       logger.error('open_recurring_modal 액션 처리 오류:', error);
+    }
+  });
+
+  // 현황 버튼 → 현황 모달 열기
+  app.action('open_status_modal', async ({ ack, body, client, logger }) => {
+    await ack();
+    try {
+      const channelId = (body as { channel?: { id?: string } }).channel?.id ?? '';
+      const triggerId = (body as { trigger_id?: string }).trigger_id;
+      if (!triggerId) return;
+      await client.views.open({
+        trigger_id: triggerId,
+        view: buildStatusModal(channelId),
+      });
+    } catch (error) {
+      logger.error('open_status_modal 액션 처리 오류:', error);
     }
   });
 }
