@@ -24,8 +24,10 @@ export async function searchUsers(
   // Google Directory API 시도
   try {
     return await searchUsersViaGoogle(query);
-  } catch (error) {
-    console.warn('Google Directory API 검색 실패, Slack으로 폴백:', error instanceof Error ? error.message : String(error));
+  } catch (error: unknown) {
+    const gaxErr = error as { response?: { data?: unknown }; code?: number; message?: string };
+    const detail = gaxErr.response?.data ?? gaxErr.message ?? String(error);
+    console.warn('Google Directory API 검색 실패, Slack으로 폴백:', JSON.stringify(detail));
   }
 
   // Slack 폴백
@@ -52,7 +54,7 @@ async function searchUsersViaGoogle(query: string): Promise<UserSearchResult[]> 
     throw new Error('GOOGLE_ADMIN_EMAIL에서 도메인을 추출할 수 없습니다.');
   }
 
-  // Google Directory API query 문법에 맞게 특수문자 제거 + 싱글쿼트 래핑
+  // Google Directory API query: 특수문자 제거, prefix 검색
   const sanitized = query.replace(/['":\\*]/g, '').trim();
   if (!sanitized) {
     return [];
@@ -60,7 +62,7 @@ async function searchUsersViaGoogle(query: string): Promise<UserSearchResult[]> 
 
   const response = await directory.users.list({
     domain,
-    query: `name:'${sanitized}'`,
+    query: `name:${sanitized}`,  // prefix match (쿼트 없이)
     maxResults: 10,
     orderBy: 'givenName',
     projection: 'basic',
