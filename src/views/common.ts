@@ -14,11 +14,11 @@ export function toKST(date: Date): Date {
 }
 
 /**
- * 00:00 ~ 23:30 사이의 30분 단위 시간 옵션 48개 생성
+ * 08:00 ~ 23:30 사이의 30분 단위 시간 옵션 생성
  */
 export function generateTimeOptions(): TimeOption[] {
   const options: TimeOption[] = [];
-  for (let hour = 0; hour < 24; hour++) {
+  for (let hour = 8; hour < 24; hour++) {
     for (const minute of [0, 30]) {
       const h = String(hour).padStart(2, '0');
       const m = String(minute).padStart(2, '0');
