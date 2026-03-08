@@ -52,9 +52,15 @@ async function searchUsersViaGoogle(query: string): Promise<UserSearchResult[]> 
     throw new Error('GOOGLE_ADMIN_EMAIL에서 도메인을 추출할 수 없습니다.');
   }
 
+  // Google Directory API query 문법에 맞게 특수문자 제거 + 싱글쿼트 래핑
+  const sanitized = query.replace(/['":\\*]/g, '').trim();
+  if (!sanitized) {
+    return [];
+  }
+
   const response = await directory.users.list({
     domain,
-    query: `name:${query}*`,
+    query: `name:'${sanitized}'`,
     maxResults: 10,
     orderBy: 'givenName',
     projection: 'basic',
