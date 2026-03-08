@@ -84,13 +84,10 @@ export function getResourceClient() {
 }
 
 export function getGoogleSheetsClient() {
-  const adminEmail = process.env['GOOGLE_ADMIN_EMAIL'];
-  if (!adminEmail) {
-    throw new Error('🔑 GOOGLE_ADMIN_EMAIL 환경변수가 설정되지 않았습니다.');
-  }
-  const auth = getGoogleAuth(
-    ['https://www.googleapis.com/auth/spreadsheets'],
-    adminEmail,
-  );
+  // Sheets API는 특정 스프레드시트 1개만 접근하므로 도메인 위임(DWD) 불필요
+  // 서비스 계정 직접 인증 사용 → 스프레드시트에 서비스 계정 이메일을 편집자로 공유 필요
+  const auth = getGoogleAuth([
+    'https://www.googleapis.com/auth/spreadsheets',
+  ]);
   return google.sheets({ version: 'v4', auth });
 }

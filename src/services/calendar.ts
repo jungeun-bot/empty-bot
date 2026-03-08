@@ -138,7 +138,7 @@ export async function createBooking(request: BookingRequest): Promise<string> {
         if (roomAttendee?.responseStatus === 'accepted') {
           // 미팅룸이 예약을 수락함
           // 시트 기록 (비동기, 실패해도 예약에 영향 없음)
-          logBookingToSheet(request, eventId).catch(() => {});
+          logBookingToSheet(request, eventId).catch((e) => console.error('📊 시트 기록 실패:', e));
           return eventId;
         }
 
@@ -169,7 +169,7 @@ export async function createBooking(request: BookingRequest): Promise<string> {
 
     // polling 타임아웃 — FreeBusy로 이미 확인했으므로 낙관적 성공 처리
     // 시트 기록 (비동기, 실패해도 예약에 영향 없음)
-    logBookingToSheet(request, eventId).catch(() => {});
+    logBookingToSheet(request, eventId).catch((e) => console.error('📊 시트 기록 실패:', e));
     return eventId;
   });
 }

@@ -4,5 +4,5 @@ const run = (cmd) => { console.log(`> ${cmd}`); console.log(execSync(cmd, { enco
 
 run(`"${git}" add -A`);
 run(`"${git}" status --short`);
-run(`"${git}" commit -m "feat: 예약 취소/수정 시 Google Sheets 기록 + 봇 이름 미팅룸/포커스룸으로 통일"`);
+run(`"${git}" commit -m "fix: Sheets API 인증을 서비스 계정 직접 방식으로 변경 (DWD 스코프 의존 제거)"`);
 run(`"${git}" push origin main`);
