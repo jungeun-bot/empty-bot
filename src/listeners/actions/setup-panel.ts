@@ -29,12 +29,13 @@ export function registerSetupPanelActions(app: App): void {
     await ack();
 
     try {
+      const channelId = (body as { channel?: { id?: string } }).channel?.id ?? '';
       const triggerId = (body as { trigger_id?: string }).trigger_id;
       if (!triggerId) return;
 
       await client.views.open({
         trigger_id: triggerId,
-        view: buildDateRoomSelectModal(),
+        view: buildDateRoomSelectModal(channelId),
       });
     } catch (error) {
       logger.error('open_edit_modal 액션 처리 오류:', error);
