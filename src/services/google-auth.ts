@@ -67,3 +67,18 @@ export function getDirectoryClient() {
   );
   return google.admin({ version: 'directory_v1', auth });
 }
+
+export function getResourceClient() {
+  const adminEmail = process.env['GOOGLE_ADMIN_EMAIL'];
+  if (!adminEmail) {
+    throw new Error('🔑 GOOGLE_ADMIN_EMAIL 환경변수가 설정되지 않았습니다.');
+  }
+  const auth = getGoogleAuth(
+    [
+      'https://www.googleapis.com/auth/admin.directory.resource.calendar.readonly',
+      'https://www.googleapis.com/auth/admin.directory.resource.calendar',
+    ],
+    adminEmail,
+  );
+  return google.admin({ version: 'directory_v1', auth });
+}

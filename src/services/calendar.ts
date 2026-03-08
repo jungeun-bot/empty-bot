@@ -17,7 +17,7 @@ export async function getAvailableRooms(
   const candidateRooms = getRoomsByMinCapacity(minCapacity);
   if (candidateRooms.length === 0) return [];
 
-  const calendar = getCalendarClient();
+  const calendar = getRoomCalendarClient();
 
   try {
     const response = await calendar.freebusy.query({
@@ -60,7 +60,7 @@ export async function createBooking(request: BookingRequest): Promise<string> {
 
   return withRoomLock(room.id, async () => {
     // Lock 내부에서 FreeBusy 재확인 (race condition 방지)
-    const calendar = getCalendarClient();
+    const calendar = getRoomCalendarClient();
 
     const freeBusyResponse = await calendar.freebusy.query({
       requestBody: {
@@ -280,7 +280,7 @@ async function listRoomEventsFallback(
   startOfDay: Date,
   endOfDay: Date,
 ): Promise<BookingEvent[]> {
-  const calendar = getCalendarClient();
+  const calendar = getRoomCalendarClient();
   const response = await calendar.freebusy.query({
     requestBody: {
       timeMin: startOfDay.toISOString(),
