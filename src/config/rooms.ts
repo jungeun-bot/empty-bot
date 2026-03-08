@@ -26,6 +26,12 @@ const DEFAULT_ROOMS: Room[] = [
     type: 'meeting',
   },
   {
+    id: 'focusing-room-3@resource.calendar.google.com',
+    name: 'Focus Room 3',
+    capacity: 1,
+    type: 'focus',
+  },
+  {
     id: 'focusing-room-4@resource.calendar.google.com',
     name: 'Focus Room 4',
     capacity: 1,
