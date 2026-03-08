@@ -235,28 +235,65 @@ function getRoomCalendarClient() {
 
 export async function listRoomEvents(roomId: string, date: Date): Promise<BookingEvent[]> {
   const calendar = getRoomCalendarClient();
-
   const { startOfDay, endOfDay } = getKSTDayRange(date);
 
-  const response = await calendar.events.list({
-    calendarId: roomId,
-    timeMin: startOfDay.toISOString(),
-    timeMax: endOfDay.toISOString(),
-    singleEvents: true,
-    orderBy: 'startTime',
+  // 1차: events.list로 상세 정보 조회 시도
+  try {
+    const response = await calendar.events.list({
+      calendarId: roomId,
+      timeMin: startOfDay.toISOString(),
+      timeMax: endOfDay.toISOString(),
+      singleEvents: true,
+      orderBy: 'startTime',
+    });
+
+    const events = response.data.items ?? [];
+    return events
+      .filter((e: calendar_v3.Schema$Event) => e.start?.dateTime && e.end?.dateTime)
+      .map((e: calendar_v3.Schema$Event) => ({
+        eventId: e.id ?? '',
+        summary: e.summary ?? '(제목 없음)',
+        startTime: new Date(e.start!.dateTime!),
+        endTime: new Date(e.end!.dateTime!),
+        organizer: e.organizer?.email ?? '',
+        creator: e.creator?.email ?? '',
+        attendees: (e.attendees ?? []).map((a: calendar_v3.Schema$EventAttendee) => a.email ?? '').filter(Boolean),
+        roomId,
+        roomName: '',
+      }));
+  } catch {
+    // 2차: 권한 부족 시 freebusy.query로 시간대만 조회
+    return listRoomEventsFallback(calendar, roomId, startOfDay, endOfDay);
+  }
+}
+
+/** freebusy.query 기반 fallback — 이벤트 이름 없이 시간대만 반환 */
+async function listRoomEventsFallback(
+  calendar: ReturnType<typeof getRoomCalendarClient>,
+  roomId: string,
+  startOfDay: Date,
+  endOfDay: Date,
+): Promise<BookingEvent[]> {
+  const response = await calendar.freebusy.query({
+    requestBody: {
+      timeMin: startOfDay.toISOString(),
+      timeMax: endOfDay.toISOString(),
+      timeZone: env.google.timezone,
+      items: [{ id: roomId }],
+    },
   });
 
-  const events = response.data.items ?? [];
-  return events
-    .filter((e: calendar_v3.Schema$Event) => e.start?.dateTime && e.end?.dateTime)
-    .map((e: calendar_v3.Schema$Event) => ({
-      eventId: e.id ?? '',
-      summary: e.summary ?? '(제목 없음)',
-      startTime: new Date(e.start!.dateTime!),
-      endTime: new Date(e.end!.dateTime!),
-      organizer: e.organizer?.email ?? '',
-      creator: e.creator?.email ?? '',
-      attendees: (e.attendees ?? []).map((a: calendar_v3.Schema$EventAttendee) => a.email ?? '').filter(Boolean),
+  const busySlots = response.data.calendars?.[roomId]?.busy ?? [];
+  return busySlots
+    .filter((slot) => slot.start && slot.end)
+    .map((slot) => ({
+      eventId: '',
+      summary: '(예약 있음)',
+      startTime: new Date(slot.start!),
+      endTime: new Date(slot.end!),
+      organizer: '',
+      creator: '',
+      attendees: [],
       roomId,
       roomName: '',
     }));

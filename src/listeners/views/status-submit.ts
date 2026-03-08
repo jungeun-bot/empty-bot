@@ -101,7 +101,12 @@ export function registerStatusSubmit(app: App): void {
       try {
         await client.views.update({
           view_id: body.view?.id ?? '',
-          view: buildErrorView(message),
+          view: {
+            type: 'modal' as const,
+            title: { type: 'plain_text' as const, text: '조회 실패', emoji: true },
+            close: { type: 'plain_text' as const, text: '닫기', emoji: true },
+            blocks: [{ type: 'section' as const, text: { type: 'mrkdwn' as const, text: `❌ ${message}` } }],
+          },
         });
       } catch {
         // views.update 실패 무시
