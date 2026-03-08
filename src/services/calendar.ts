@@ -234,11 +234,11 @@ function getRoomCalendarClient() {
 }
 
 export async function listRoomEvents(roomId: string, date: Date): Promise<BookingEvent[]> {
-  const calendar = getRoomCalendarClient();
   const { startOfDay, endOfDay } = getKSTDayRange(date);
 
-  // 1차: events.list로 상세 정보 조회 시도
+  // 1차: events.list로 상세 정보 조회 시도 (admin 위장)
   try {
+    const calendar = getRoomCalendarClient();
     const response = await calendar.events.list({
       calendarId: roomId,
       timeMin: startOfDay.toISOString(),
@@ -248,7 +248,7 @@ export async function listRoomEvents(roomId: string, date: Date): Promise<Bookin
     });
 
     const events = response.data.items ?? [];
-    return events
+    const result = events
       .filter((e: calendar_v3.Schema$Event) => e.start?.dateTime && e.end?.dateTime)
       .map((e: calendar_v3.Schema$Event) => ({
         eventId: e.id ?? '',
@@ -261,19 +261,26 @@ export async function listRoomEvents(roomId: string, date: Date): Promise<Bookin
         roomId,
         roomName: '',
       }));
+
+    // events.list 성공했지만 빈 배열인 경우 — 권한 부족으로 이벤트가 숨겨졌을 수 있음
+    // freebusy로 재확인
+    if (result.length === 0) {
+      return listRoomEventsFallback(roomId, startOfDay, endOfDay);
+    }
+    return result;
   } catch {
     // 2차: 권한 부족 시 freebusy.query로 시간대만 조회
-    return listRoomEventsFallback(calendar, roomId, startOfDay, endOfDay);
+    return listRoomEventsFallback(roomId, startOfDay, endOfDay);
   }
 }
 
-/** freebusy.query 기반 fallback — 이벤트 이름 없이 시간대만 반환 */
+/** freebusy.query 기반 fallback — 서비스 계정 직접 인증 (위장 없음, getAvailableRooms와 동일) */
 async function listRoomEventsFallback(
-  calendar: ReturnType<typeof getRoomCalendarClient>,
   roomId: string,
   startOfDay: Date,
   endOfDay: Date,
 ): Promise<BookingEvent[]> {
+  const calendar = getCalendarClient();
   const response = await calendar.freebusy.query({
     requestBody: {
       timeMin: startOfDay.toISOString(),
