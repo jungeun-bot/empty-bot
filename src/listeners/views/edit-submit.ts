@@ -7,6 +7,7 @@ import { buildProcessingView, buildErrorView } from '../../views/result-views.js
 import { parseDateTimeString } from '../../views/common.js';
 import { getRoomById } from '../../config/rooms.js';
 import type { BookingEvent } from '../../types/index.js';
+import { logCancelToSheet, logEditToSheet } from '../../services/sheets-log.js';
 
 /** Slack 사용자 이메일 조회 헬퍼 */
 async function resolveUserEmail(
@@ -232,6 +233,18 @@ export function registerEditSubmit(app: App): void {
 
       await sendChangeNotification(client, oldBooking, changes);
 
+      // 시트 기록 (비동기, 실패해도 수정에 영향 없음)
+      const editRoom = getRoomById(roomId);
+      logEditToSheet(
+        organizerEmail,
+        editRoom?.name || '',
+        eventId,
+        newSummary,
+        newStartTime,
+        newEndTime,
+        oldBooking.attendees.filter(email => email !== roomId),
+      ).catch(() => {});
+
       await client.chat.postMessage({
           channel: channelId || body.user.id,
         text: '✅ 예약이 수정되었습니다.',
@@ -278,6 +291,9 @@ export function registerEditSubmit(app: App): void {
       await cancelBooking(eventId, roomId, organizerEmail);
 
       await sendCancelNotification(client, booking);
+
+      // 시트 기록 (비동기, 실패해도 취소에 영향 없음)
+      logCancelToSheet(organizerEmail, booking).catch(() => {});
 
       await client.chat.postMessage({
           channel: channelId || body.user.id,

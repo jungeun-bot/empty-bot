@@ -12,7 +12,7 @@ export function registerHelpCommand(app: App): void {
             type: 'section',
             text: {
               type: 'mrkdwn',
-              text: '*🏢 미팅룸 예약봇 사용 가이드*',
+              text: '*🏢 미팅룸/포커스룸 예약봇 사용 가이드*',
             },
           },
           { type: 'divider' },
@@ -60,7 +60,7 @@ export function registerHelpCommand(app: App): void {
             },
           },
         ],
-        text: '미팅룸 예약봇 사용 가이드',
+        text: '미팅룸/포커스룸 예약봇 사용 가이드',
       });
     } catch (error) {
       logger.error('/사용방법 처리 오류:', error);

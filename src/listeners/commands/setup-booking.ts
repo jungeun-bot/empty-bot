@@ -10,7 +10,7 @@ export function registerSetupBookingCommand(app: App): void {
       const result = await client.chat.postMessage({
         channel: command.channel_id,
         blocks: buildSetupPanelMessage() as KnownBlock[],
-        text: '🏢 미팅룸 예약 시스템',
+        text: '🏢 미팅룸/포커스룸 예약 시스템',
       });
 
       if (result.ts) {

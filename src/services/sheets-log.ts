@@ -1,9 +1,11 @@
 import { getGoogleSheetsClient } from './google-auth.js';
 import { env } from '../config/env.js';
-import type { BookingRequest } from '../types/index.js';
+import { getRoomById } from '../config/rooms.js';
+import type { BookingRequest, BookingEvent } from '../types/index.js';
 
 const HEADERS = [
-  '예약일시',
+  '구분',
+  '기록일시',
   '예약자(이메일)',
   '회의실',
   '날짜',
@@ -38,6 +40,33 @@ async function getSheetName(
 }
 
 /**
+ * 공통: 시트에 행 추가
+ */
+async function appendRow(row: string[]): Promise<void> {
+  const sheetId = env.google.sheetId;
+  if (!sheetId) return;
+
+  try {
+    const sheets = getGoogleSheetsClient();
+    const sheetName = await getSheetName(sheets, sheetId);
+
+    await ensureHeaders(sheets, sheetId, sheetName);
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: sheetId,
+      range: `'${sheetName}'!A:J`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [row] },
+    });
+
+    console.log(`📊 Google Sheets 기록 완료: [${row[0]}] ${row[3]} / ${row[7]}`);
+  } catch (error) {
+    const errDetail = error instanceof Error ? error.message : JSON.stringify(error);
+    console.error(`📊 Google Sheets 기록 실패 (예약 처리에는 영향 없음): ${errDetail}`);
+  }
+}
+
+/**
  * 예약 생성 시 Google Sheets에 기록 추가
  * GOOGLE_SHEET_ID가 설정되지 않으면 조용히 스킵
  */
@@ -45,55 +74,83 @@ export async function logBookingToSheet(
   request: BookingRequest,
   eventId: string,
 ): Promise<void> {
-  const sheetId = env.google.sheetId;
-  if (!sheetId) {
-    return; // 시트 ID 미설정 시 스킵
-  }
+  const now = new Date();
+  const attendeeList = request.attendees
+    .map((a) => a.name || a.email)
+    .join(', ');
 
-  try {
-    const sheets = getGoogleSheetsClient();
-    const sheetName = await getSheetName(sheets, sheetId);
+  await appendRow([
+    '예약',
+    formatKST(now, 'datetime'),
+    request.organizer,
+    request.room.name,
+    formatKST(request.startTime, 'date'),
+    formatKST(request.startTime, 'time'),
+    formatKST(request.endTime, 'time'),
+    request.title,
+    attendeeList,
+    eventId,
+  ]);
+}
 
-    // 헤더 행 확인 및 자동 생성
-    await ensureHeaders(sheets, sheetId, sheetName);
+/**
+ * 예약 취소 시 Google Sheets에 기록 추가
+ */
+export async function logCancelToSheet(
+  organizerEmail: string,
+  booking: BookingEvent,
+): Promise<void> {
+  const now = new Date();
+  const roomName = booking.roomName || getRoomById(booking.roomId)?.name || booking.roomId;
+  // summary에서 [RoomName] prefix 제거
+  const title = booking.summary.replace(/^\[.*?\]\s*/, '');
+  const attendeeList = booking.attendees
+    .filter((email) => email !== booking.roomId)
+    .join(', ');
 
-    const now = new Date();
-    const kstNow = formatKST(now, 'datetime');
-    const kstDate = formatKST(request.startTime, 'date');
-    const kstStart = formatKST(request.startTime, 'time');
-    const kstEnd = formatKST(request.endTime, 'time');
+  await appendRow([
+    '취소',
+    formatKST(now, 'datetime'),
+    organizerEmail,
+    roomName,
+    formatKST(booking.startTime, 'date'),
+    formatKST(booking.startTime, 'time'),
+    formatKST(booking.endTime, 'time'),
+    title,
+    attendeeList,
+    booking.eventId,
+  ]);
+}
 
-    const attendeeList = request.attendees
-      .map((a) => a.name || a.email)
-      .join(', ');
+/**
+ * 예약 수정 시 Google Sheets에 기록 추가 (수정 후 값 기록)
+ */
+export async function logEditToSheet(
+  organizerEmail: string,
+  roomName: string,
+  eventId: string,
+  newSummary: string,
+  newStartTime: Date,
+  newEndTime: Date,
+  attendees: string[],
+): Promise<void> {
+  const now = new Date();
+  // summary에서 [RoomName] prefix 제거
+  const title = newSummary.replace(/^\[.*?\]\s*/, '');
+  const attendeeList = attendees.join(', ');
 
-    const row = [
-      kstNow,
-      request.organizer,
-      request.room.name,
-      kstDate,
-      kstStart,
-      kstEnd,
-      request.title,
-      attendeeList,
-      eventId,
-    ];
-
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: sheetId,
-      range: `'${sheetName}'!A:I`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: {
-        values: [row],
-      },
-    });
-
-    console.log(`📊 Google Sheets 기록 완료: ${request.room.name} / ${request.title}`);
-  } catch (error) {
-    // 시트 기록 실패는 예약 자체에 영향을 주지 않음
-    const errDetail = error instanceof Error ? error.message : JSON.stringify(error);
-    console.error(`📊 Google Sheets 기록 실패 (예약은 정상 처리됨): ${errDetail}`);
-  }
+  await appendRow([
+    '수정',
+    formatKST(now, 'datetime'),
+    organizerEmail,
+    roomName,
+    formatKST(newStartTime, 'date'),
+    formatKST(newStartTime, 'time'),
+    formatKST(newEndTime, 'time'),
+    title,
+    attendeeList,
+    eventId,
+  ]);
 }
 
 /**
@@ -107,7 +164,7 @@ async function ensureHeaders(
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: `'${sheetName}'!A1:I1`,
+      range: `'${sheetName}'!A1:J1`,
     });
 
     const firstRow = response.data.values?.[0];
@@ -115,7 +172,7 @@ async function ensureHeaders(
       // 헤더 행 작성
       await sheets.spreadsheets.values.update({
         spreadsheetId: sheetId,
-        range: `'${sheetName}'!A1:I1`,
+        range: `'${sheetName}'!A1:J1`,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
           values: [HEADERS],
