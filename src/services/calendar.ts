@@ -101,6 +101,10 @@ export async function createBooking(request: BookingRequest): Promise<string> {
         },
         attendees: [
           { email: room.id, resource: true },
+          // 예약자 본인을 참석자에 자동 포함 (중복 방지)
+          ...(effectiveOrganizer && !attendees.some((a) => a.email === effectiveOrganizer)
+            ? [{ email: effectiveOrganizer }]
+            : []),
           ...attendees.map((a) => ({ email: a.email, displayName: a.name })),
         ],
         extendedProperties: {
