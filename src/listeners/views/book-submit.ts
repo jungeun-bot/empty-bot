@@ -67,6 +67,15 @@ export function registerBookSubmit(app: App): void {
         return;
       }
 
+      // 예약자 이메일 조회 (포커스룸/미팅룸 공통)
+      let organizerEmail = '';
+      try {
+        const userInfo = await client.users.info({ user: body.user.id });
+        organizerEmail = userInfo.user?.profile?.email ?? '';
+      } catch {
+        // 이메일 조회 실패 시 빈 문자열
+      }
+
       // 포커스룸 분기
       if (roomType === 'focus') {
         const focusRooms = getRoomsByType('focus');
@@ -89,6 +98,7 @@ export function registerBookSubmit(app: App): void {
           userId: body.user.id,
           availableRooms: focusRooms,
           meetingTitle,
+          organizerEmail,
         };
         pendingBookings.set(bookingId, booking);
         setTimeout(() => pendingBookings.delete(bookingId), 5 * 60 * 1000);
@@ -101,15 +111,7 @@ export function registerBookSubmit(app: App): void {
       }
 
       // --- 미팅룸 흐름 ---
-
-      // 예약자 이메일 조회 (중복 제거용)
-      let organizerEmail = '';
-      try {
-        const userInfo = await client.users.info({ user: body.user.id });
-        organizerEmail = userInfo.user?.profile?.email ?? '';
-      } catch {
-        // 이메일 조회 실패 시 빈 문자열
-      }
+      // (organizerEmail은 위에서 이미 조회됨)
 
       // 참석자/사용자그룹 선택 파싱 (group: 접두어로 구분)
       const selectedOptions = values['attendees_block']?.['attendees_input']?.selected_options ?? [];
