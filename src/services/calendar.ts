@@ -4,6 +4,7 @@ import { getRoomsByMinCapacity, ROOMS } from '../config/rooms.js';
 import { env } from '../config/env.js';
 import type { Room, BookingRequest, BookingEvent } from '../types/index.js';
 import { calendar_v3 } from 'googleapis';
+import { logBookingToSheet } from './sheets-log.js';
 
 /**
  * 특정 시간대에 예약 가능한 미팅룸 목록 조회
@@ -134,6 +135,8 @@ export async function createBooking(request: BookingRequest): Promise<string> {
 
         if (roomAttendee?.responseStatus === 'accepted') {
           // 미팅룸이 예약을 수락함
+          // 시트 기록 (비동기, 실패해도 예약에 영향 없음)
+          logBookingToSheet(request, eventId).catch(() => {});
           return eventId;
         }
 
@@ -163,6 +166,8 @@ export async function createBooking(request: BookingRequest): Promise<string> {
     }
 
     // polling 타임아웃 — FreeBusy로 이미 확인했으므로 낙관적 성공 처리
+    // 시트 기록 (비동기, 실패해도 예약에 영향 없음)
+    logBookingToSheet(request, eventId).catch(() => {});
     return eventId;
   });
 }
