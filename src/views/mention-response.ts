@@ -16,7 +16,6 @@ export function buildMentionResponse(
   parsedTime: Date,
   capacity: number | null,
 ): object[] {
-  const capacityText = capacity ? ` ${capacity}인 이상` : '';
   const headerText = capacity
     ? `🏢 *${formatDateTime(parsedTime)} 기준 ${capacity}인 이상 사용 가능한 미팅룸*`
     : `🏢 *${formatDateTime(parsedTime)} 기준 사용 가능한 미팅룸*`;

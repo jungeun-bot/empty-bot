@@ -2,7 +2,7 @@ import type { WebClient } from '@slack/web-api';
 import type { ConversationState, ConversationStage, Attendee, Room, RoomType, BookingRequest, BookingEvent } from '../types/index.js';
 import { searchUsers } from './directory.js';
 import { getAvailableRooms, createBooking, listRoomEvents, cancelBooking } from './calendar.js';
-import { parseCapacity, parseAttendeeNames, parseDatePart } from './message-parser.js';
+import { parseAttendeeNames, parseDatePart } from './message-parser.js';
 import { formatDateTime } from '../views/common.js';
 import { sendCancelNotification } from './notification.js';
 import { getRoomsByType } from '../config/rooms.js';

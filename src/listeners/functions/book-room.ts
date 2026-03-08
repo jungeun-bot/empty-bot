@@ -5,7 +5,7 @@ import { selectBestRoom } from '../../services/conversation.js';
 import type { BookingRequest, Attendee } from '../../types/index.js';
 
 export function registerBookRoomFunction(app: App): void {
-  app.function('book_room', async ({ inputs, complete, fail, client, logger }) => {
+  app.function('book_room', async ({ inputs, complete, fail, logger }) => {
     try {
       // inputs에서 파라미터 추출
       const startTimeStr = inputs['start_time'] as string;

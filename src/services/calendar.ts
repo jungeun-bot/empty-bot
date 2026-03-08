@@ -282,13 +282,6 @@ export async function listRoomEvents(roomId: string, date: Date): Promise<Bookin
   const events = response.data.items ?? [];
   const roomIdSet = new Set(ROOMS.map(r => r.id));
 
-  // 진단 로깅: raw API 응답
-  console.log(`[listUserBookings] email=${userEmail}, timeMin=${startOfDay.toISOString()}, timeMax=${endOfDay.toISOString()}`);
-  console.log(`[listUserBookings] raw events count: ${events.length}, roomIdSet size: ${roomIdSet.size}`);
-  for (const ev of events) {
-    const attendeeInfo = (ev.attendees ?? []).map(a => `${a.email}(resource=${a.resource})`).join(', ');
-    console.log(`[listUserBookings]   event: ${ev.summary} | attendees: [${attendeeInfo}]`);
-  }
 
   return events
     .filter((e: calendar_v3.Schema$Event) => e.start?.dateTime && e.end?.dateTime)

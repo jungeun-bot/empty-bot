@@ -10,15 +10,6 @@ function requireEnv(name: string): string {
   return value;
 }
 
-function requireOneOf(names: string[]): string {
-  for (const name of names) {
-    const value = process.env[name];
-    if (value) return value;
-  }
-  console.error(`❌ 다음 환경변수 중 하나가 필요합니다: ${names.join(', ')}`);
-  console.error(`   .env.example을 참고하여 .env 파일을 설정해주세요.`);
-  process.exit(1);
-}
 
 export const env = {
   slack: {

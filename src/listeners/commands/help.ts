@@ -1,7 +1,7 @@
 import type { App } from '@slack/bolt';
 
 export function registerHelpCommand(app: App): void {
-  app.command('/사용방법', async ({ command, ack, respond, logger }) => {
+  app.command('/사용방법', async ({ ack, respond, logger }) => {
     await ack();
 
     try {

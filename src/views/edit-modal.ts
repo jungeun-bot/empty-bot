@@ -1,4 +1,3 @@
-import { ROOMS } from '../config/rooms.js';
 import { formatDateTime } from './common.js';
 import type { BookingEvent } from '../types/index.js';
 

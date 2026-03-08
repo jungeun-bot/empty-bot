@@ -125,7 +125,6 @@ export function registerNowBookSubmit(app: App): void {
       }
 
       // 참석자 수 + 본인(예약자) = 총 인원
-      const capacity = modalAttendees.length + 1;
 
       const startTime = booking.startTime;
       const endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
