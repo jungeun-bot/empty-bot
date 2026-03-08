@@ -22,6 +22,7 @@ export const env = {
     serviceAccountKeyPath: process.env['GOOGLE_SERVICE_ACCOUNT_KEY_PATH'],
     adminEmail: requireEnv('GOOGLE_ADMIN_EMAIL'),
     timezone: process.env['GOOGLE_CALENDAR_TIMEZONE'] ?? 'Asia/Seoul',
+    sheetId: process.env['GOOGLE_SHEET_ID'],
   },
   rooms: {
     config: process.env['ROOMS_CONFIG'],

@@ -82,3 +82,15 @@ export function getResourceClient() {
   );
   return google.admin({ version: 'directory_v1', auth });
 }
+
+export function getGoogleSheetsClient() {
+  const adminEmail = process.env['GOOGLE_ADMIN_EMAIL'];
+  if (!adminEmail) {
+    throw new Error('🔑 GOOGLE_ADMIN_EMAIL 환경변수가 설정되지 않았습니다.');
+  }
+  const auth = getGoogleAuth(
+    ['https://www.googleapis.com/auth/spreadsheets'],
+    adminEmail,
+  );
+  return google.sheets({ version: 'v4', auth });
+}
