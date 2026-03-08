@@ -2,8 +2,6 @@ import { getGoogleSheetsClient } from './google-auth.js';
 import { env } from '../config/env.js';
 import type { BookingRequest } from '../types/index.js';
 
-const SHEET_NAME = '예약기록';
-
 const HEADERS = [
   '예약일시',
   '예약자(이메일)',
@@ -15,6 +13,29 @@ const HEADERS = [
   '참석자',
   '이벤트ID',
 ];
+
+// 시트 이름 캐시 (첫 호출 시 자동 감지)
+let cachedSheetName: string | null = null;
+
+/**
+ * 스프레드시트의 첫 번째 시트 이름을 자동 감지
+ */
+async function getSheetName(
+  sheets: ReturnType<typeof getGoogleSheetsClient>,
+  spreadsheetId: string,
+): Promise<string> {
+  if (cachedSheetName) return cachedSheetName;
+
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties.title',
+  });
+
+  const firstSheet = meta.data.sheets?.[0]?.properties?.title;
+  cachedSheetName = firstSheet ?? 'Sheet1';
+  console.log(`📊 Google Sheets 시트 이름 감지: "${cachedSheetName}"`);
+  return cachedSheetName;
+}
 
 /**
  * 예약 생성 시 Google Sheets에 기록 추가
@@ -31,9 +52,10 @@ export async function logBookingToSheet(
 
   try {
     const sheets = getGoogleSheetsClient();
+    const sheetName = await getSheetName(sheets, sheetId);
 
     // 헤더 행 확인 및 자동 생성
-    await ensureHeaders(sheets, sheetId);
+    await ensureHeaders(sheets, sheetId, sheetName);
 
     const now = new Date();
     const kstNow = formatKST(now, 'datetime');
@@ -59,15 +81,18 @@ export async function logBookingToSheet(
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
-      range: `${SHEET_NAME}!A:I`,
+      range: `'${sheetName}'!A:I`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [row],
       },
     });
+
+    console.log(`📊 Google Sheets 기록 완료: ${request.room.name} / ${request.title}`);
   } catch (error) {
     // 시트 기록 실패는 예약 자체에 영향을 주지 않음
-    console.error('📊 Google Sheets 기록 실패 (예약은 정상 처리됨):', error);
+    const errDetail = error instanceof Error ? error.message : JSON.stringify(error);
+    console.error(`📊 Google Sheets 기록 실패 (예약은 정상 처리됨): ${errDetail}`);
   }
 }
 
@@ -77,11 +102,12 @@ export async function logBookingToSheet(
 async function ensureHeaders(
   sheets: ReturnType<typeof getGoogleSheetsClient>,
   sheetId: string,
+  sheetName: string,
 ): Promise<void> {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: `${SHEET_NAME}!A1:I1`,
+      range: `'${sheetName}'!A1:I1`,
     });
 
     const firstRow = response.data.values?.[0];
@@ -89,17 +115,17 @@ async function ensureHeaders(
       // 헤더 행 작성
       await sheets.spreadsheets.values.update({
         spreadsheetId: sheetId,
-        range: `${SHEET_NAME}!A1:I1`,
+        range: `'${sheetName}'!A1:I1`,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
           values: [HEADERS],
         },
       });
+      console.log(`📊 헤더 행 자동 생성 완료 (시트: ${sheetName})`);
     }
   } catch (error) {
-    // 시트가 없는 경우 — 시트 이름이 다를 수 있음
-    // 기본 Sheet1에도 시도
-    console.warn(`📊 '${SHEET_NAME}' 시트 접근 실패. 시트 이름을 확인해주세요:`, error);
+    const errDetail = error instanceof Error ? error.message : JSON.stringify(error);
+    console.warn(`📊 헤더 확인 실패: ${errDetail}`);
   }
 }
 
