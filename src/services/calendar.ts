@@ -87,7 +87,7 @@ export async function createBooking(request: BookingRequest): Promise<string> {
       calendarId: 'primary',
       sendUpdates: 'all',
       requestBody: {
-        summary: title,
+        summary: `[${room.name}] ${title}`,
         start: {
           dateTime: startTime.toISOString(),
           timeZone: env.google.timezone,
