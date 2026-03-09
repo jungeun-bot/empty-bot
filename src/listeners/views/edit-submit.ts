@@ -183,16 +183,47 @@ export function registerEditSubmit(app: App): void {
 
     try {
       const eventId = parsedMeta.eventId ?? '';
-      const roomId = parsedMeta.roomId ?? '';
+      const oldRoomId = parsedMeta.roomId ?? '';
 
       const values = view.state.values;
       const newSummary = values['title_block']?.['title_input']?.value ?? '';
+      const newRoomId = values['room_block']?.['room_input']?.selected_option?.value ?? oldRoomId;
       const newDateStr = values['date_block']?.['date_input']?.selected_date ?? '';
       const newStartTimeStr = values['start_time_block']?.['start_time_input']?.selected_option?.value ?? '';
       const newEndTimeStr = values['end_time_block']?.['end_time_input']?.selected_option?.value ?? '';
 
       const newStartTime = parseDateTimeString(newDateStr, newStartTimeStr);
       const newEndTime = parseDateTimeString(newDateStr, newEndTimeStr);
+
+      // 참석자 파싱 (group: 접두어로 그룹/개인 구분 — book-submit.ts와 동일 패턴)
+      const selectedOptions = values['attendees_block']?.['attendees_input']?.selected_options ?? [];
+      const groupSelections = selectedOptions.filter((opt: { value: string }) => opt.value.startsWith('group:'));
+      const userSelections = selectedOptions.filter((opt: { value: string }) => !opt.value.startsWith('group:'));
+
+      // 그룹 멤버 이메일 해석
+      const groupEmails: string[] = [];
+      for (const group of groupSelections) {
+        const groupId = group.value.replace('group:', '');
+        try {
+          const membersResult = await client.usergroups.users.list({ usergroup: groupId });
+          const memberIds = membersResult.users ?? [];
+          const memberInfos = await Promise.all(
+            memberIds.map(async (uid: string) => {
+              try {
+                const info = await client.users.info({ user: uid });
+                return info.user?.profile?.email ?? '';
+              } catch { return ''; }
+            }),
+          );
+          for (const email of memberInfos) {
+            if (email) groupEmails.push(email);
+          }
+        } catch {
+          // 그룹 멤버 조회 실패 시 스킵
+        }
+      }
+
+      const individualEmails = userSelections.map((opt: { value: string }) => opt.value);
 
       // 사용자의 primary calendar에서 기존 이벤트 조회
       const organizerEmail = await resolveUserEmail(client, body.user.id);
@@ -206,11 +237,19 @@ export function registerEditSubmit(app: App): void {
         return;
       }
 
-      if (!oldBooking.roomId && roomId) {
-        oldBooking.roomId = roomId;
-        const room = getRoomById(roomId);
+      if (!oldBooking.roomId && oldRoomId) {
+        oldBooking.roomId = oldRoomId;
+        const room = getRoomById(oldRoomId);
         oldBooking.roomName = room?.name ?? '';
       }
+
+      // 참석자 중복 제거 (예약자 제외)
+      const newPersonAttendees = [...new Set([...groupEmails, ...individualEmails])]
+        .filter(email => email && email !== organizerEmail);
+
+      // 캘린더 업데이트용 전체 참석자 리스트 (사람 + 회의실 + 예약자)
+      const fullAttendees = [...new Set([...newPersonAttendees, newRoomId, organizerEmail])]
+        .filter(Boolean);
 
       // changes 구성
       const changes: BookingChanges = {};
@@ -223,18 +262,31 @@ export function registerEditSubmit(app: App): void {
       if (oldBooking.endTime.getTime() !== newEndTime.getTime()) {
         changes.endTime = { before: oldBooking.endTime, after: newEndTime };
       }
+      if (oldRoomId !== newRoomId) {
+        const oldRoom = getRoomById(oldRoomId);
+        const newRoom = getRoomById(newRoomId);
+        changes.room = { before: oldRoom?.name ?? '', after: newRoom?.name ?? '' };
+      }
+      const oldPersonAttendees = oldBooking.attendees
+        .filter(e => !e.includes('@resource.calendar.google.com') && e !== organizerEmail)
+        .sort();
+      const sortedNewPerson = [...newPersonAttendees].sort();
+      if (JSON.stringify(oldPersonAttendees) !== JSON.stringify(sortedNewPerson)) {
+        changes.attendees = { before: oldPersonAttendees, after: newPersonAttendees };
+      }
 
       // user의 primary calendar에서 직접 수정
-      await updateBooking(eventId, roomId, {
+      await updateBooking(eventId, newRoomId, {
         summary: newSummary,
         startTime: newStartTime,
         endTime: newEndTime,
+        attendees: fullAttendees,
       }, organizerEmail);
 
       await sendChangeNotification(client, oldBooking, changes);
 
       // 시트 기록 (비동기, 실패해도 수정에 영향 없음)
-      const editRoom = getRoomById(roomId);
+      const editRoom = getRoomById(newRoomId);
       logEditToSheet(
         organizerEmail,
         editRoom?.name || '',
@@ -242,11 +294,11 @@ export function registerEditSubmit(app: App): void {
         newSummary,
         newStartTime,
         newEndTime,
-        oldBooking.attendees.filter(email => email !== roomId),
+        newPersonAttendees,
       ).catch(() => {});
 
       await client.chat.postMessage({
-          channel: channelId || body.user.id,
+        channel: channelId || body.user.id,
         text: '✅ 예약이 수정되었습니다.',
       });
     } catch (error) {

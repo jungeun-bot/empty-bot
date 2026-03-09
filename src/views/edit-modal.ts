@@ -1,5 +1,6 @@
 import { formatDateTime } from './common.js';
 import type { BookingEvent } from '../types/index.js';
+import { ROOMS } from '../config/rooms.js';
 
 function formatDateYMD(date: Date): string {
   const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -157,6 +158,21 @@ export function buildEditBookingModal(booking: BookingEvent, channelId?: string)
   const startInitial = timeOptions.find(o => o.value === currentStartTime) ?? timeOptions[0]!;
   const endInitial = timeOptions.find(o => o.value === currentEndTime) ?? timeOptions[0]!;
 
+  // 회의실 옵션
+  const roomOptions = ROOMS.map(r => ({
+    text: { type: 'plain_text' as const, text: `${r.name} (${r.capacity}인)`, emoji: false },
+    value: r.id,
+  }));
+  const currentRoomOption = roomOptions.find(o => o.value === booking.roomId) ?? roomOptions[0]!;
+
+  // 참석자 초기값 (리소스 캘린더 + 주최자 제외)
+  const attendeeInitialOptions = booking.attendees
+    .filter(email => !email.includes('@resource.calendar.google.com') && email !== booking.organizer)
+    .map(email => ({
+      text: { type: 'plain_text' as const, text: email, emoji: false },
+      value: email,
+    }));
+
   return {
     type: 'modal' as const,
     callback_id: 'edit_booking_submit',
@@ -189,6 +205,21 @@ export function buildEditBookingModal(booking: BookingEvent, channelId?: string)
           type: 'plain_text_input' as const,
           action_id: 'title_input',
           initial_value: booking.summary,
+        },
+      },
+      {
+        type: 'input' as const,
+        block_id: 'room_block',
+        label: {
+          type: 'plain_text' as const,
+          text: '회의실',
+          emoji: true,
+        },
+        element: {
+          type: 'static_select' as const,
+          action_id: 'room_input',
+          options: roomOptions,
+          initial_option: currentRoomOption,
         },
       },
       {
@@ -233,6 +264,23 @@ export function buildEditBookingModal(booking: BookingEvent, channelId?: string)
           action_id: 'end_time_input',
           options: timeOptions,
           initial_option: endInitial,
+        },
+      },
+      {
+        type: 'input' as const,
+        block_id: 'attendees_block',
+        optional: true,
+        label: {
+          type: 'plain_text' as const,
+          text: '참석자',
+          emoji: true,
+        },
+        element: {
+          type: 'multi_external_select' as const,
+          action_id: 'attendees_input',
+          placeholder: { type: 'plain_text' as const, text: '이름 또는 그룹명으로 검색', emoji: false },
+          min_query_length: 0,
+          ...(attendeeInitialOptions.length > 0 ? { initial_options: attendeeInitialOptions } : {}),
         },
       },
     ],
