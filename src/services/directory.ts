@@ -3,14 +3,14 @@ import { getDirectoryClient } from './google-auth.js';
 import { env } from '../config/env.js';
 import type { UserSearchResult } from '../types/index.js';
 
-// Slack 사용자 목록 캐시 (5분 TTL)
+// Slack 사용자 목록 캐시 (30분 TTL)
 interface SlackUserCache {
   users: UserSearchResult[];
   fetchedAt: number;
 }
 
 let slackUserCache: SlackUserCache | null = null;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5분
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30분
 
 /**
  * 사용자 검색 (Slack 우선, 실패 시 Google Directory 폴백)
@@ -137,4 +137,14 @@ async function fetchAllSlackUsers(client: WebClient): Promise<UserSearchResult[]
   } while (cursor);
 
   return results;
+}
+
+/**
+ * 앱 시작 시 Slack 사용자 캐시를 사전 로드
+ * options 핸들러의 3초 타임아웃 초과 방지
+ */
+export async function warmUpSlackUserCache(client: WebClient): Promise<void> {
+  const allUsers = await fetchAllSlackUsers(client);
+  slackUserCache = { users: allUsers, fetchedAt: Date.now() };
+  console.log(`📋 Slack 사용자 캐시 사전 로드 완료: ${allUsers.length}명`);
 }

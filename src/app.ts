@@ -3,6 +3,7 @@ import http from 'node:http';
 import { App, LogLevel } from '@slack/bolt';
 import { env } from './config/env.js';
 import { registerListeners } from './listeners/index.js';
+import { warmUpSlackUserCache } from './services/directory.js';
 
 const app = new App({
   token: env.slack.botToken,
@@ -30,6 +31,10 @@ server.listen(PORT, () => {
 
 app.start().then(() => {
   console.log('⚡ Slack 미팅룸 예약봇이 시작되었습니다!');
+  // Slack 사용자 캐시 사전 로드 (options 핸들러 3초 타임아웃 방지)
+  warmUpSlackUserCache(app.client).catch((err) =>
+    console.warn('Slack 사용자 캐시 사전 로드 실패:', err),
+  );
 }).catch((error: unknown) => {
   console.error('앱 시작 실패:', error);
   process.exit(1);

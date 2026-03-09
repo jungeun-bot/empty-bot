@@ -44,8 +44,8 @@ export function registerAttendeeOptions(app: App): void {
         return;
       }
 
-      // 개별 사용자 검색 (3글자 이상 입력 시)
-      if (query.length >= 3) {
+      // 개별 사용자 검색 (2글자 이상 입력 시)
+      if (query.length >= 2) {
         const users = await searchUsers(query, client);
         const maxUsers = Math.max(10 - results.length, 5);
 
