@@ -13,7 +13,8 @@ let slackUserCache: SlackUserCache | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5분
 
 /**
- * 사용자 검색 (Google Directory 우선, 실패 시 Slack 폴백)
+ * 사용자 검색 (Slack 우선, 실패 시 Google Directory 폴백)
+ * Slack은 도메인 상관없이 모든 사용자 검색 가능
  */
 export async function searchUsers(
   query: string,
@@ -21,25 +22,23 @@ export async function searchUsers(
 ): Promise<UserSearchResult[]> {
   if (query.length < 2) return [];
 
-  // Google Directory API 시도
+  // Slack 검색 우선 (도메인 무관, 모든 사용자 커버)
+  if (slackClient) {
+    try {
+      const slackResults = await searchUsersViaSlack(query, slackClient);
+      if (slackResults.length > 0) return slackResults;
+    } catch (error) {
+      console.warn('Slack 사용자 검색 실패, Google Directory로 폴백:', error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  // Google Directory API 폴백
   try {
-    const googleResults = await searchUsersViaGoogle(query);
-    if (googleResults.length > 0) return googleResults;
-    // 결과가 비어있으면 Slack 폴백으로 계속 (외부 도메인 사용자 검색 시)
-    console.log(`Google Directory 결과 없음 (query=${query}), Slack으로 폴백`);
+    return await searchUsersViaGoogle(query);
   } catch (error: unknown) {
     const gaxErr = error as { response?: { data?: unknown }; code?: number; message?: string };
     const detail = gaxErr.response?.data ?? gaxErr.message ?? String(error);
-    console.warn('Google Directory API 검색 실패, Slack으로 폴백:', JSON.stringify(detail));
-  }
-
-  // Slack 폴백
-  if (slackClient) {
-    try {
-      return await searchUsersViaSlack(query, slackClient);
-    } catch (error) {
-      console.error('Slack 사용자 검색도 실패:', error instanceof Error ? error.message : String(error));
-    }
+    console.warn('Google Directory API 검색도 실패:', JSON.stringify(detail));
   }
 
   return [];

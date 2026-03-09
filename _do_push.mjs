@@ -4,5 +4,5 @@ const run = (cmd) => { console.log(`> ${cmd}`); console.log(execSync(cmd, { enco
 
 run(`"${git}" add -A`);
 run(`"${git}" status --short`);
-run(`"${git}" commit -m "fix: Directory 검색 결과가 비어있을 때도 Slack 폴백 실행"`);
+run(`"${git}" commit -m "refactor: 사용자 검색 순서 Slack 우선으로 변경 (다중 도메인 지원)"`);
 run(`"${git}" push origin main`);
