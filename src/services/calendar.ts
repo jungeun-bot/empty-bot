@@ -87,6 +87,7 @@ export async function createBooking(request: BookingRequest): Promise<string> {
 
     const eventBody = {
       summary: `[${room.name}] ${title}`,
+      description: `예약자: ${effectiveOrganizer}`,
       start: {
         dateTime: startTime.toISOString(),
         timeZone: env.google.timezone,
