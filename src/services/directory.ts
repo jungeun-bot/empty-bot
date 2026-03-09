@@ -23,7 +23,10 @@ export async function searchUsers(
 
   // Google Directory API 시도
   try {
-    return await searchUsersViaGoogle(query);
+    const googleResults = await searchUsersViaGoogle(query);
+    if (googleResults.length > 0) return googleResults;
+    // 결과가 비어있으면 Slack 폴백으로 계속 (외부 도메인 사용자 검색 시)
+    console.log(`Google Directory 결과 없음 (query=${query}), Slack으로 폴백`);
   } catch (error: unknown) {
     const gaxErr = error as { response?: { data?: unknown }; code?: number; message?: string };
     const detail = gaxErr.response?.data ?? gaxErr.message ?? String(error);

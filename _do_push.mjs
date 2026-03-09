@@ -4,5 +4,5 @@ const run = (cmd) => { console.log(`> ${cmd}`); console.log(execSync(cmd, { enco
 
 run(`"${git}" add -A`);
 run(`"${git}" status --short`);
-run(`"${git}" commit -m "feat: 캘린더 이벤트 설명에 실제 예약자 이메일 표시"`);
+run(`"${git}" commit -m "fix: Directory 검색 결과가 비어있을 때도 Slack 폴백 실행"`);
 run(`"${git}" push origin main`);
