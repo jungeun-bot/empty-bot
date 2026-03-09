@@ -261,6 +261,28 @@ function getRoomCalendarClient() {
   return getCalendarClient();
 }
 
+/**
+ * DWD 인증 실패 시 admin으로 자동 fallback
+ * 외부 도메인 사용자(예: @filamentree.com)도 정상 처리
+ */
+async function withCalendarFallback<T>(
+  userEmail: string,
+  operation: (calendar: ReturnType<typeof getCalendarClientForUser>, isAdmin: boolean) => Promise<T>,
+): Promise<T> {
+  try {
+    const calendar = getCalendarClientForUser(userEmail);
+    return await operation(calendar, false);
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    if (errMsg.includes('unauthorized_client')) {
+      console.warn(`⚠️ DWD 인증 실패 (${userEmail}), admin(${env.google.adminEmail})으로 재시도`);
+      const calendar = getCalendarClientForUser(env.google.adminEmail);
+      return await operation(calendar, true);
+    }
+    throw error;
+  }
+}
+
 export async function listRoomEvents(roomId: string, date: Date): Promise<BookingEvent[]> {
   const { startOfDay, endOfDay } = getKSTDayRange(date);
 
@@ -338,32 +360,69 @@ async function listRoomEventsFallback(
  * 사용자의 primary calendar에서 미팅룸 예약 목록 조회
  * room calendar 대신 user calendar을 직접 조회하여 ACL 문제 회피
  * room attendee가 있는 이벤트만 필터링
+ * DWD 인증 실패 시 admin fallback + 사용자 참석 이벤트만 표시
  */
-  export async function listUserBookings(userEmail: string, date: Date): Promise<BookingEvent[]> {
-  const calendar = getCalendarClientForUser(userEmail);
+export async function listUserBookings(userEmail: string, date: Date): Promise<BookingEvent[]> {
   const { startOfDay, endOfDay } = getKSTDayRange(date);
 
-  const response = await calendar.events.list({
-    calendarId: 'primary',
-    timeMin: startOfDay.toISOString(),
-    timeMax: endOfDay.toISOString(),
-    singleEvents: true,
-    orderBy: 'startTime',
+  return withCalendarFallback(userEmail, async (calendar, isAdmin) => {
+    const response = await calendar.events.list({
+      calendarId: 'primary',
+      timeMin: startOfDay.toISOString(),
+      timeMax: endOfDay.toISOString(),
+      singleEvents: true,
+      orderBy: 'startTime',
+    });
+
+    const events = response.data.items ?? [];
+    const roomIdSet = new Set(ROOMS.map(r => r.id));
+
+    return events
+      .filter((e: calendar_v3.Schema$Event) => e.start?.dateTime && e.end?.dateTime)
+      .map((e: calendar_v3.Schema$Event) => {
+        const roomAttendee = e.attendees?.find(a =>
+          roomIdSet.has(a.email ?? '') || (a.email?.endsWith('@resource.calendar.google.com') ?? false)
+        );
+        const roomId = roomAttendee?.email ?? '';
+        const room = ROOMS.find(r => r.id === roomId);
+        return {
+          eventId: e.id ?? '',
+          summary: e.summary ?? '(제목 없음)',
+          startTime: new Date(e.start!.dateTime!),
+          endTime: new Date(e.end!.dateTime!),
+          organizer: e.organizer?.email ?? '',
+          creator: e.creator?.email ?? '',
+          attendees: (e.attendees ?? []).map((a: calendar_v3.Schema$EventAttendee) => a.email ?? '').filter(Boolean),
+          roomId,
+          roomName: room?.name ?? '',
+        };
+      })
+      .filter(e => e.roomId !== '')
+      // admin fallback 시 해당 사용자가 참석자인 이벤트만 표시
+      .filter(e => !isAdmin || e.attendees.includes(userEmail));
   });
+}
 
-  const events = response.data.items ?? [];
-  const roomIdSet = new Set(ROOMS.map(r => r.id));
+/**
+ * 사용자의 primary calendar에서 특정 이벤트 조회
+ * DWD 인증 실패 시 admin fallback
+ */
+export async function getUserEvent(userEmail: string, eventId: string): Promise<BookingEvent | null> {
+  try {
+    return await withCalendarFallback(userEmail, async (calendar) => {
+      const response = await calendar.events.get({
+        calendarId: 'primary',
+        eventId,
+      });
 
+      const e = response.data;
+      if (!e.start?.dateTime || !e.end?.dateTime) return null;
 
-  return events
-    .filter((e: calendar_v3.Schema$Event) => e.start?.dateTime && e.end?.dateTime)
-    .map((e: calendar_v3.Schema$Event) => {
-      // resource 필드에 의존하지 않고, roomIdSet 매칭 또는 @resource.calendar.google.com suffix로 판별
-      const roomAttendee = e.attendees?.find(a =>
-        roomIdSet.has(a.email ?? '') || (a.email?.endsWith('@resource.calendar.google.com') ?? false)
-      );
+      const roomIdSet = new Set(ROOMS.map(r => r.id));
+      const roomAttendee = e.attendees?.find(a => roomIdSet.has(a.email ?? '') || (a.email?.endsWith('@resource.calendar.google.com') ?? false));
       const roomId = roomAttendee?.email ?? '';
       const room = ROOMS.find(r => r.id === roomId);
+
       return {
         eventId: e.id ?? '',
         summary: e.summary ?? '(제목 없음)',
@@ -375,41 +434,7 @@ async function listRoomEventsFallback(
         roomId,
         roomName: room?.name ?? '',
       };
-    })
-    .filter(e => e.roomId !== '');
-}
-
-/**
- * 사용자의 primary calendar에서 특정 이벤트 조회
- */
-export async function getUserEvent(userEmail: string, eventId: string): Promise<BookingEvent | null> {
-  const calendar = getCalendarClientForUser(userEmail);
-
-  try {
-    const response = await calendar.events.get({
-      calendarId: 'primary',
-      eventId,
     });
-
-    const e = response.data;
-    if (!e.start?.dateTime || !e.end?.dateTime) return null;
-
-    const roomIdSet = new Set(ROOMS.map(r => r.id));
-      const roomAttendee = e.attendees?.find(a => roomIdSet.has(a.email ?? '') || (a.email?.endsWith('@resource.calendar.google.com') ?? false));
-    const roomId = roomAttendee?.email ?? '';
-    const room = ROOMS.find(r => r.id === roomId);
-
-    return {
-      eventId: e.id ?? '',
-      summary: e.summary ?? '(제목 없음)',
-      startTime: new Date(e.start!.dateTime!),
-      endTime: new Date(e.end!.dateTime!),
-      organizer: e.organizer?.email ?? '',
-      creator: e.creator?.email ?? '',
-      attendees: (e.attendees ?? []).map((a: calendar_v3.Schema$EventAttendee) => a.email ?? '').filter(Boolean),
-      roomId,
-      roomName: room?.name ?? '',
-    };
   } catch {
     return null;
   }
@@ -418,7 +443,7 @@ export async function getUserEvent(userEmail: string, eventId: string): Promise<
 /**
  * 예약 수정
  * GET → merge → PATCH 패턴으로 기존 참석자 유지
- * 반복 이벤트 수정 금지, 과거 이벤트 수정 금지
+ * DWD 인증 실패 시 admin fallback
  */
 export async function updateBooking(
   eventId: string,
@@ -426,72 +451,79 @@ export async function updateBooking(
   updates: { summary?: string; startTime?: Date; endTime?: Date; attendees?: string[] },
   organizerEmail?: string,
 ): Promise<void> {
-  const calendar = organizerEmail
-    ? getCalendarClientForUser(organizerEmail)
-    : getRoomCalendarClient();
-  const calendarId = organizerEmail ? 'primary' : roomId;
+  const doUpdate = async (calendar: ReturnType<typeof getCalendarClientForUser>, calendarId: string) => {
+    const existing = await calendar.events.get({ calendarId, eventId });
 
-  // 기존 이벤트 조회 (GET → merge → PATCH 패턴)
-  const existing = await calendar.events.get({ calendarId, eventId });
+    if (existing.data.recurringEventId) {
+      throw new Error('반복 이벤트는 수정할 수 없습니다.');
+    }
 
-  // 반복 이벤트 수정 금지
-  if (existing.data.recurringEventId) {
-    throw new Error('반복 이벤트는 수정할 수 없습니다.');
+    const startTime = updates.startTime ?? new Date(existing.data.start?.dateTime ?? '');
+    if (startTime.getTime() < Date.now()) {
+      throw new Error('이미 지난 예약은 수정할 수 없습니다.');
+    }
+
+    const existingAttendees = existing.data.attendees ?? [];
+    const newAttendeeEmails = updates.attendees ?? [];
+    const mergedAttendees = newAttendeeEmails.length > 0
+      ? newAttendeeEmails.map(email => ({ email }))
+      : existingAttendees;
+
+    const patch: Record<string, unknown> = {};
+    if (updates.summary) patch['summary'] = updates.summary;
+    if (updates.startTime) patch['start'] = { dateTime: updates.startTime.toISOString(), timeZone: env.google.timezone };
+    if (updates.endTime) patch['end'] = { dateTime: updates.endTime.toISOString(), timeZone: env.google.timezone };
+    if (newAttendeeEmails.length > 0) patch['attendees'] = mergedAttendees;
+
+    await calendar.events.patch({
+      calendarId,
+      eventId,
+      sendUpdates: 'all',
+      requestBody: patch,
+    });
+  };
+
+  if (organizerEmail) {
+    await withCalendarFallback(organizerEmail, async (calendar) => {
+      await doUpdate(calendar, 'primary');
+    });
+  } else {
+    const calendar = getRoomCalendarClient();
+    await doUpdate(calendar, roomId);
   }
-
-  // 과거 이벤트 수정 금지
-  const startTime = updates.startTime ?? new Date(existing.data.start?.dateTime ?? '');
-  if (startTime.getTime() < Date.now()) {
-    throw new Error('이미 지난 예약은 수정할 수 없습니다.');
-  }
-
-  // 참석자 병합 (기존 참석자 유지 + 새 참석자 추가)
-  const existingAttendees = existing.data.attendees ?? [];
-  const newAttendeeEmails = updates.attendees ?? [];
-  const mergedAttendees = newAttendeeEmails.length > 0
-    ? newAttendeeEmails.map(email => ({ email }))
-    : existingAttendees;
-
-  const patch: Record<string, unknown> = {};
-  if (updates.summary) patch['summary'] = updates.summary;
-  if (updates.startTime) patch['start'] = { dateTime: updates.startTime.toISOString(), timeZone: env.google.timezone };
-  if (updates.endTime) patch['end'] = { dateTime: updates.endTime.toISOString(), timeZone: env.google.timezone };
-  if (newAttendeeEmails.length > 0) patch['attendees'] = mergedAttendees;
-
-  await calendar.events.patch({
-    calendarId,
-    eventId,
-    sendUpdates: 'all',
-    requestBody: patch,
-  });
 }
 
 /**
  * 예약 취소 (이벤트 삭제)
  * 410 Gone / 404 Not Found 그레이스풀 처리
+ * DWD 인증 실패 시 admin fallback
  */
 export async function cancelBooking(eventId: string, roomId: string, organizerEmail?: string): Promise<void> {
-  const calendar = organizerEmail
-    ? getCalendarClientForUser(organizerEmail)
-    : getRoomCalendarClient();
-  const calendarId = organizerEmail ? 'primary' : roomId;
+  const doCancel = async (calendar: ReturnType<typeof getCalendarClientForUser>, calendarId: string) => {
+    try {
+      await calendar.events.delete({
+        calendarId,
+        eventId,
+        sendUpdates: 'all',
+      });
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'code' in err && (err as { code: number }).code === 410) {
+        return;
+      }
+      if (err && typeof err === 'object' && 'code' in err && (err as { code: number }).code === 404) {
+        return;
+      }
+      throw err;
+    }
+  };
 
-  try {
-    await calendar.events.delete({
-      calendarId,
-      eventId,
-      sendUpdates: 'all',
+  if (organizerEmail) {
+    await withCalendarFallback(organizerEmail, async (calendar) => {
+      await doCancel(calendar, 'primary');
     });
-  } catch (err: unknown) {
-    // 410 Gone: 이미 삭제된 이벤트 → 그레이스풀 처리
-    if (err && typeof err === 'object' && 'code' in err && (err as { code: number }).code === 410) {
-      return;
-    }
-    // 404 Not Found: 존재하지 않는 이벤트 → 그레이스풀 처리
-    if (err && typeof err === 'object' && 'code' in err && (err as { code: number }).code === 404) {
-      return;
-    }
-    throw err;
+  } else {
+    const calendar = getRoomCalendarClient();
+    await doCancel(calendar, roomId);
   }
 }
 

@@ -4,5 +4,5 @@ const run = (cmd) => { console.log(`> ${cmd}`); console.log(execSync(cmd, { enco
 
 run(`"${git}" add -A`);
 run(`"${git}" status --short`);
-run(`"${git}" commit -m "fix: DWD 인증 실패 시 admin fallback으로 자동 재시도"`);
+run(`"${git}" commit -m "fix: 모든 Calendar API에 DWD fallback 적용 — @filamentree.com 등 외부 도메인 지원"`);
 run(`"${git}" push origin main`);
