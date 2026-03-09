@@ -82,39 +82,56 @@ export async function createBooking(request: BookingRequest): Promise<string> {
     }
 
     // organizer 이메일로 impersonation하여 이벤트 생성 (초대장 발송자)
-    // organizer가 빈 문자열이면 admin 위장으로 fallback (Domain-Wide Delegation 오류 방지)
+    // DWD 인증 실패 시 admin으로 자동 fallback
     const effectiveOrganizer = organizer || env.google.adminEmail;
-    const userCalendar = getCalendarClientForUser(effectiveOrganizer);
 
-    const eventResponse = await userCalendar.events.insert({
-      calendarId: 'primary',
-      sendUpdates: 'all',
-      requestBody: {
-        summary: `[${room.name}] ${title}`,
-        start: {
-          dateTime: startTime.toISOString(),
-          timeZone: env.google.timezone,
-        },
-        end: {
-          dateTime: endTime.toISOString(),
-          timeZone: env.google.timezone,
-        },
-        attendees: [
-          { email: room.id, resource: true },
-          // 예약자 본인을 참석자에 자동 포함 (중복 방지)
-          ...(effectiveOrganizer && !attendees.some((a) => a.email === effectiveOrganizer)
-            ? [{ email: effectiveOrganizer }]
-            : []),
-          ...attendees.map((a) => ({ email: a.email, displayName: a.name })),
-        ],
-        extendedProperties: {
-          private: {
-            createdBy: 'slack-room-bot',
-          },
-        },
-        ...(recurrence && recurrence.length > 0 ? { recurrence } : {}),
+    const eventBody = {
+      summary: `[${room.name}] ${title}`,
+      start: {
+        dateTime: startTime.toISOString(),
+        timeZone: env.google.timezone,
       },
-    });
+      end: {
+        dateTime: endTime.toISOString(),
+        timeZone: env.google.timezone,
+      },
+      attendees: [
+        { email: room.id, resource: true },
+        // 예약자 본인을 참석자에 자동 포함 (중복 방지)
+        ...(effectiveOrganizer && !attendees.some((a) => a.email === effectiveOrganizer)
+          ? [{ email: effectiveOrganizer }]
+          : []),
+        ...attendees.map((a) => ({ email: a.email, displayName: a.name })),
+      ],
+      extendedProperties: {
+        private: {
+          createdBy: 'slack-room-bot',
+        },
+      },
+      ...(recurrence && recurrence.length > 0 ? { recurrence } : {}),
+    };
+
+    const insertParams = {
+      calendarId: 'primary' as const,
+      sendUpdates: 'all' as const,
+      requestBody: eventBody,
+    };
+
+    let userCalendar = getCalendarClientForUser(effectiveOrganizer);
+    let eventResponse;
+
+    try {
+      eventResponse = await userCalendar.events.insert(insertParams);
+    } catch (insertError) {
+      const errMsg = insertError instanceof Error ? insertError.message : String(insertError);
+      if (errMsg.includes('unauthorized_client')) {
+        console.warn(`⚠️ DWD 인증 실패 (${effectiveOrganizer}), admin(${env.google.adminEmail})으로 재시도`);
+        userCalendar = getCalendarClientForUser(env.google.adminEmail);
+        eventResponse = await userCalendar.events.insert(insertParams);
+      } else {
+        throw insertError;
+      }
+    }
 
     const eventId = eventResponse.data.id;
     if (!eventId) {

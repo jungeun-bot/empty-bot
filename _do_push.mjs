@@ -4,5 +4,5 @@ const run = (cmd) => { console.log(`> ${cmd}`); console.log(execSync(cmd, { enco
 
 run(`"${git}" add -A`);
 run(`"${git}" status --short`);
-run(`"${git}" commit -m "feat: 예약 생성 시 예약자 본인을 참석자에 자동 포함"`);
+run(`"${git}" commit -m "fix: DWD 인증 실패 시 admin fallback으로 자동 재시도"`);
 run(`"${git}" push origin main`);
