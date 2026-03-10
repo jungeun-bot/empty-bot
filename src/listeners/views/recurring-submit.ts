@@ -145,11 +145,13 @@ export function registerRecurringSubmit(app: App): void {
         }
       }
 
-      // ── 예약자 이메일 조회 ──
+      // ── 예약자 정보 조회 ──
       let organizerEmail = '';
+      let organizerName = '';
       try {
         const userInfo = await client.users.info({ user: body.user.id });
         organizerEmail = userInfo.user?.profile?.email ?? '';
+        organizerName = userInfo.user?.profile?.real_name ?? '';
       } catch { /* 무시 */ }
 
       if (!organizerEmail) {
@@ -240,6 +242,7 @@ export function registerRecurringSubmit(app: App): void {
         title: meetingTitle || '정기 회의',
         attendees,
         organizer: organizerEmail,
+        organizerName,
         recurrence: [rrule],
       };
 

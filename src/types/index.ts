@@ -14,6 +14,7 @@ export interface BookingRequest {
   title: string;
   attendees: Attendee[];
   organizer: string; // 예약자 이메일
+  organizerName?: string; // 예약자 이름 (Slack 표시명)
   recurrence?: string[]; // RRULE (정기 회의용, 예: ['RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20251231T235959Z'])
 }
 
@@ -42,6 +43,7 @@ export interface PendingBooking {
   availableRooms?: Room[];
   meetingTitle?: string;  // 회의 제목
   organizerEmail?: string; // 예약자 이메일 (중복 조회 방지용)
+  organizerName?: string; // 예약자 이름
 }
 
 // Google 서비스 계정 키 구조
@@ -110,4 +112,5 @@ export interface BookingEvent {
   roomId: string;
   roomName: string;
   bookerEmail?: string;
+  bookerName?: string;
 }

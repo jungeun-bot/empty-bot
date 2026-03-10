@@ -57,7 +57,7 @@ export async function getAvailableRooms(
  * responseStatus polling으로 auto-decline 감지
  */
 export async function createBooking(request: BookingRequest): Promise<string> {
-  const { room, startTime, endTime, title, attendees, organizer, recurrence } = request;
+  const { room, startTime, endTime, title, attendees, organizer, organizerName, recurrence } = request;
 
   return withRoomLock(room.id, async () => {
     // Lock 내부에서 FreeBusy 재확인 (race condition 방지)
@@ -87,7 +87,9 @@ export async function createBooking(request: BookingRequest): Promise<string> {
 
     const eventBody = {
       summary: `[${room.name}] ${title}`,
-      description: `예약자: ${effectiveOrganizer}`,
+      description: organizerName
+        ? `예약자: ${organizerName} (${effectiveOrganizer})`
+        : `예약자: ${effectiveOrganizer}`,
       start: {
         dateTime: startTime.toISOString(),
         timeZone: env.google.timezone,
@@ -302,7 +304,8 @@ export async function listRoomEvents(roomId: string, date: Date): Promise<Bookin
     const result = events
       .filter((e: calendar_v3.Schema$Event) => e.start?.dateTime && e.end?.dateTime)
       .map((e: calendar_v3.Schema$Event) => {
-        const descMatch = (e.description ?? '').match(/예약자:\s*(\S+)/);
+        const descRaw = (e.description ?? '').match(/예약자:\s*(.+)/)?.[1] ?? '';
+        const emailInParens = descRaw.match(/\(([\w.+-]+@[\w.-]+)\)/)?.[1];
         return {
           eventId: e.id ?? '',
           summary: e.summary ?? '(제목 없음)',
@@ -313,7 +316,8 @@ export async function listRoomEvents(roomId: string, date: Date): Promise<Bookin
           attendees: (e.attendees ?? []).map((a: calendar_v3.Schema$EventAttendee) => a.email ?? '').filter(Boolean),
           roomId,
           roomName: '',
-          bookerEmail: descMatch?.[1] || e.organizer?.email || '',
+          bookerEmail: emailInParens || descRaw || e.organizer?.email || '',
+          bookerName: emailInParens ? descRaw.replace(/\s*\(.*\)$/, '').trim() : '',
         };
       });
 
@@ -390,7 +394,8 @@ export async function listUserBookings(userEmail: string, date: Date): Promise<B
         );
         const roomId = roomAttendee?.email ?? '';
         const room = ROOMS.find(r => r.id === roomId);
-        const descMatch2 = (e.description ?? '').match(/예약자:\s*(\S+)/);
+        const descRaw2 = (e.description ?? '').match(/예약자:\s*(.+)/)?.[1] ?? '';
+        const emailInParens2 = descRaw2.match(/\(([\w.+-]+@[\w.-]+)\)/)?.[1];
         return {
           eventId: e.id ?? '',
           summary: e.summary ?? '(제목 없음)',
@@ -401,7 +406,8 @@ export async function listUserBookings(userEmail: string, date: Date): Promise<B
           attendees: (e.attendees ?? []).map((a: calendar_v3.Schema$EventAttendee) => a.email ?? '').filter(Boolean),
           roomId,
           roomName: room?.name ?? '',
-          bookerEmail: descMatch2?.[1] || e.organizer?.email || '',
+          bookerEmail: emailInParens2 || descRaw2 || e.organizer?.email || '',
+          bookerName: emailInParens2 ? descRaw2.replace(/\s*\(.*\)$/, '').trim() : '',
         };
       })
       .filter(e => e.roomId !== '')
@@ -430,7 +436,8 @@ export async function getUserEvent(userEmail: string, eventId: string): Promise<
       const roomId = roomAttendee?.email ?? '';
       const room = ROOMS.find(r => r.id === roomId);
 
-      const descMatch3 = (e.description ?? '').match(/예약자:\s*(\S+)/);
+      const descRaw3 = (e.description ?? '').match(/예약자:\s*(.+)/)?.[1] ?? '';
+      const emailInParens3 = descRaw3.match(/\(([\w.+-]+@[\w.-]+)\)/)?.[1];
       return {
         eventId: e.id ?? '',
         summary: e.summary ?? '(제목 없음)',
@@ -441,7 +448,8 @@ export async function getUserEvent(userEmail: string, eventId: string): Promise<
         attendees: (e.attendees ?? []).map((a: calendar_v3.Schema$EventAttendee) => a.email ?? '').filter(Boolean),
         roomId,
         roomName: room?.name ?? '',
-        bookerEmail: descMatch3?.[1] || e.organizer?.email || '',
+        bookerEmail: emailInParens3 || descRaw3 || e.organizer?.email || '',
+        bookerName: emailInParens3 ? descRaw3.replace(/\s*\(.*\)$/, '').trim() : '',
       };
     });
   } catch {

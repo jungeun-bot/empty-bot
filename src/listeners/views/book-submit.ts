@@ -67,13 +67,15 @@ export function registerBookSubmit(app: App): void {
         return;
       }
 
-      // 예약자 이메일 조회 (포커스룸/미팅룸 공통)
+      // 예약자 정보 조회 (포커스룸/미팅룸 공통)
       let organizerEmail = '';
+      let organizerName = '';
       try {
         const userInfo = await client.users.info({ user: body.user.id });
         organizerEmail = userInfo.user?.profile?.email ?? '';
+        organizerName = userInfo.user?.profile?.real_name ?? '';
       } catch {
-        // 이메일 조회 실패 시 빈 문자열
+        // 조회 실패 시 빈 문자열
       }
 
       // 포커스룸 분기
@@ -99,6 +101,7 @@ export function registerBookSubmit(app: App): void {
           availableRooms: focusRooms,
           meetingTitle,
           organizerEmail,
+          organizerName,
         };
         pendingBookings.set(bookingId, booking);
         setTimeout(() => pendingBookings.delete(bookingId), 5 * 60 * 1000);
@@ -203,6 +206,7 @@ export function registerBookSubmit(app: App): void {
         availableRooms,
         meetingTitle,
         organizerEmail,
+        organizerName,
       };
       pendingBookings.set(bookingId, booking);
 
@@ -267,15 +271,17 @@ export function registerBookSubmit(app: App): void {
         title: booking.meetingTitle || `[미팅룸 예약] ${room.name}`,
         attendees: booking.attendees,
         organizer: organizerEmail,
+        organizerName: booking.organizerName,
       };
 
       const eventId = await createBooking(bookingRequest);
       logger.info(`예약 완료: eventId=${eventId}, room=${room.name}`);
       pendingBookings.delete(bookingId);
 
-      const attendeeNames = booking.attendees.length > 0
-        ? booking.attendees.map(a => a.name).join(', ')
-        : '없음';
+      const allNames: string[] = [];
+      if (booking.organizerName) allNames.push(booking.organizerName);
+      allNames.push(...booking.attendees.map(a => a.name));
+      const attendeeNames = allNames.length > 0 ? allNames.join(', ') : '없음';
 
       await client.chat.postMessage({
         channel: booking.channelId || body.user.id,

@@ -69,7 +69,7 @@ export function registerStatusSubmit(app: App): void {
         } else {
           const lines = events.map(
             (ev) => {
-              const booker = ev.bookerEmail ? `  👤 ${ev.bookerEmail}` : '';
+              const booker = ev.bookerName || ev.bookerEmail;
               return `• ${formatKSTTime(ev.startTime)} ~ ${formatKSTTime(ev.endTime)}  ${ev.summary}${booker}`;
             },
           );

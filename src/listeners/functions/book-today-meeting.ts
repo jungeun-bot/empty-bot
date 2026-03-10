@@ -109,13 +109,14 @@ export function registerBookTodayMeetingFunction(app: App): void {
         title,
         attendees,
         organizer: organizerEmail,
+        organizerName: organizerEmail.split('@')[0],
       };
 
       const eventId = await createBooking(bookingRequest);
 
-      const attendeeNames = attendees.length > 0
-        ? attendees.map(a => a.name).join(', ')
-        : '없음';
+      const allNames: string[] = [organizerEmail.split('@')[0]];
+      allNames.push(...attendees.map(a => a.name));
+      const attendeeNames = allNames.length > 0 ? allNames.join(', ') : '없음';
 
       const successMsg = `✅ *정기 회의가 자동 예약되었습니다!*\n*회의:* ${title}\n*미팅룸:* ${selectedRoom.name} (최대 ${selectedRoom.capacity}인)\n*일시:* ${formatDateTime(startTime)} ~ ${formatDateTime(endTime)}\n*참석자:* ${attendeeNames}\n\n구글 캘린더 초대장이 발송되었습니다.`;
 
