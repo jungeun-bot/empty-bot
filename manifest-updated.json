@@ -61,7 +61,7 @@
                 "im:write",
                 "users:read",
                 "users:read.email",
-                "usergroups:read"
+                "usergroups:read",
                 "chat:write.customize"
             ]
         }

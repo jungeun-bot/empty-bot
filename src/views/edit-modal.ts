@@ -223,11 +223,10 @@ export function buildEditBookingModal(booking: BookingEvent, channelId?: string)
           text: '시작 시간',
           emoji: true,
         },
-        hint: { type: 'plain_text' as const, text: '드롭다운 외에 원하는 시간을 직접 입력할 수 있습니다 (예: 09:15, 14:45)', emoji: false },
         element: {
-          type: 'timepicker' as const,
+          type: 'plain_text_input' as const,
           action_id: 'start_time_input',
-          initial_time: currentStartTime,
+          initial_value: currentStartTime,
         },
       },
       {
@@ -239,9 +238,9 @@ export function buildEditBookingModal(booking: BookingEvent, channelId?: string)
           emoji: true,
         },
         element: {
-          type: 'timepicker' as const,
+          type: 'plain_text_input' as const,
           action_id: 'end_time_input',
-          initial_time: currentEndTime,
+          initial_value: currentEndTime,
         },
       },
       {

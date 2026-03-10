@@ -43,3 +43,17 @@ export function formatTimeRange(start: Date, end: Date): string {
 export function parseDateTimeString(dateStr: string, timeStr: string): Date {
   return new Date(`${dateStr}T${timeStr}:00+09:00`);
 }
+
+/**
+ * 사용자 입력 시간 문자열을 검증하고 HH:MM 형식으로 정규화
+ * 유효하면 'HH:MM' 반환, 무효하면 null 반환
+ */
+export function validateTimeInput(input: string): string | null {
+  const trimmed = input.trim();
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}

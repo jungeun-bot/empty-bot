@@ -64,12 +64,11 @@ export function buildBookModal(channelId: string, options: BookModalOptions = {}
         type: 'input' as const,
         block_id: 'start_time_block',
         label: { type: 'plain_text' as const, text: '🕐 시작 시간', emoji: true },
-        hint: { type: 'plain_text' as const, text: '드롭다운 외에 원하는 시간을 직접 입력할 수 있습니다 (예: 09:15, 14:45)', emoji: false },
         element: {
-          type: 'timepicker' as const,
+          type: 'plain_text_input' as const,
           action_id: 'start_time_input',
-          placeholder: { type: 'plain_text' as const, text: '시작 시간 선택', emoji: false },
-          ...(iv?.startTime ? { initial_time: iv.startTime } : {}),
+          placeholder: { type: 'plain_text' as const, text: 'HH:MM (예: 09:15, 14:45)', emoji: false },
+          ...(iv?.startTime ? { initial_value: iv.startTime } : {}),
         },
       },
       {
@@ -77,10 +76,10 @@ export function buildBookModal(channelId: string, options: BookModalOptions = {}
         block_id: 'end_time_block',
         label: { type: 'plain_text' as const, text: '🕐 종료 시간', emoji: true },
         element: {
-          type: 'timepicker' as const,
+          type: 'plain_text_input' as const,
           action_id: 'end_time_input',
-          placeholder: { type: 'plain_text' as const, text: '종료 시간 선택', emoji: false },
-          ...(iv?.endTime ? { initial_time: iv.endTime } : {}),
+          placeholder: { type: 'plain_text' as const, text: 'HH:MM (예: 17:00, 18:30)', emoji: false },
+          ...(iv?.endTime ? { initial_value: iv.endTime } : {}),
         },
       },
       {

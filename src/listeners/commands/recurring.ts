@@ -33,8 +33,8 @@ export function registerRecurringCommand(app: App): void {
         channelId = meta.channelId ?? '';
       } catch { /* 무시 */ }
 
-      const startTimeVal = values['start_time_block']?.['start_time_input']?.selected_time as string | undefined;
-      const endTimeVal = values['end_time_block']?.['end_time_input']?.selected_time as string | undefined;
+      const startTimeVal = values['start_time_block']?.['start_time_input']?.value as string | undefined;
+      const endTimeVal = values['end_time_block']?.['end_time_input']?.value as string | undefined;
       const freqOpt = values['frequency_block']?.['frequency_input']?.selected_option;
 
       await client.views.update({

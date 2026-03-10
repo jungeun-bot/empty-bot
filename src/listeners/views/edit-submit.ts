@@ -4,7 +4,7 @@ import { sendChangeNotification, sendCancelNotification } from '../../services/n
 import type { BookingChanges } from '../../services/notification.js';
 import { buildBookingListModal, buildEditBookingModal, buildCancelConfirmModal } from '../../views/edit-modal.js';
 import { buildProcessingView, buildErrorView } from '../../views/result-views.js';
-import { parseDateTimeString } from '../../views/common.js';
+import { parseDateTimeString, validateTimeInput } from '../../views/common.js';
 import { getRoomById } from '../../config/rooms.js';
 import type { BookingEvent } from '../../types/index.js';
 import { logCancelToSheet, logEditToSheet } from '../../services/sheets-log.js';
@@ -190,11 +190,21 @@ export function registerEditSubmit(app: App): void {
       const newSummary = values['title_block']?.['title_input']?.value ?? '';
       const newRoomId = values['room_block']?.['room_input']?.selected_option?.value ?? oldRoomId;
       const newDateStr = values['date_block']?.['date_input']?.selected_date ?? '';
-      const newStartTimeStr = values['start_time_block']?.['start_time_input']?.selected_time ?? '';
-      const newEndTimeStr = values['end_time_block']?.['end_time_input']?.selected_time ?? '';
+      const newStartTimeStr = values['start_time_block']?.['start_time_input']?.value ?? '';
+      const newEndTimeStr = values['end_time_block']?.['end_time_input']?.value ?? '';
 
-      const newStartTime = parseDateTimeString(newDateStr, newStartTimeStr);
-      const newEndTime = parseDateTimeString(newDateStr, newEndTimeStr);
+      const validStart = validateTimeInput(newStartTimeStr);
+      const validEnd = validateTimeInput(newEndTimeStr);
+      if (!validStart || !validEnd) {
+        await client.views.update({
+          view_id: body.view?.id ?? '',
+          view: buildErrorView('시간 형식이 올바르지 않습니다. HH:MM 형식으로 입력해주세요. (예: 09:15, 14:30)'),
+        });
+        return;
+      }
+
+      const newStartTime = parseDateTimeString(newDateStr, validStart);
+      const newEndTime = parseDateTimeString(newDateStr, validEnd);
 
       // 참석자 파싱 (group: 접두어로 그룹/개인 구분 — book-submit.ts와 동일 패턴)
       const selectedOptions = values['attendees_block']?.['attendees_input']?.selected_options ?? [];

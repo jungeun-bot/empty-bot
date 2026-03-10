@@ -3,7 +3,7 @@ import type { Attendee, BookingRequest } from '../../types/index.js';
 import { getAvailableRooms, createBooking } from '../../services/calendar.js';
 import { selectBestRoom } from '../../services/conversation.js';
 import { buildProcessingView, buildErrorView } from '../../views/result-views.js';
-import { parseDateTimeString, formatDateTime } from '../../views/common.js';
+import { parseDateTimeString, formatDateTime, validateTimeInput } from '../../views/common.js';
 import { BOT_DISPLAY_NAME } from '../../config/env.js';
 
 // 요일 매핑: Date.getDay() → RRULE BYDAY
@@ -90,8 +90,8 @@ export function registerRecurringSubmit(app: App): void {
       const roomType = (values['room_type_block']?.['recurring_type_select']?.selected_option?.value ?? 'meeting') as 'meeting' | 'focus';
       const meetingTitle = values['title_block']?.['title_input']?.value ?? '';
       const dateStr = values['date_block']?.['date_input']?.selected_date;
-      const startTimeStr = values['start_time_block']?.['start_time_input']?.selected_time;
-      const endTimeStr = values['end_time_block']?.['end_time_input']?.selected_time;
+      const startTimeStr = values['start_time_block']?.['start_time_input']?.value;
+      const endTimeStr = values['end_time_block']?.['end_time_input']?.value;
       const frequency = values['frequency_block']?.['frequency_input']?.selected_option?.value;
       const untilDateStr = values['until_block']?.['until_input']?.selected_date;
 
@@ -104,8 +104,18 @@ export function registerRecurringSubmit(app: App): void {
         return;
       }
 
-      const startTime = parseDateTimeString(dateStr, startTimeStr);
-      const endTime = parseDateTimeString(dateStr, endTimeStr);
+      const validStart = validateTimeInput(startTimeStr);
+      const validEnd = validateTimeInput(endTimeStr);
+      if (!validStart || !validEnd) {
+        await client.views.update({
+          view_id: body.view?.id ?? '',
+          view: buildErrorView('시간 형식이 올바르지 않습니다. HH:MM 형식으로 입력해주세요. (예: 09:15, 14:30)'),
+        });
+        return;
+      }
+
+      const startTime = parseDateTimeString(dateStr, validStart);
+      const endTime = parseDateTimeString(dateStr, validEnd);
 
       // ── 시간 유효성 검증 ──
       const now = new Date();
