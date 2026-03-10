@@ -104,6 +104,10 @@ export async function createBooking(request: BookingRequest): Promise<string> {
         ...(effectiveOrganizer && !attendees.some((a) => a.email === effectiveOrganizer)
           ? [{ email: effectiveOrganizer, responseStatus: 'accepted' as const }]
           : []),
+        // 관리자 캘린더에서 모든 회의 확인 가능하도록 참석자에 추가
+        ...(env.google.adminEmail && env.google.adminEmail !== effectiveOrganizer && !attendees.some((a) => a.email === env.google.adminEmail)
+          ? [{ email: env.google.adminEmail, responseStatus: 'accepted' as const }]
+          : []),
         ...attendees.map((a) => ({ email: a.email, displayName: a.name })),
       ],
       extendedProperties: {

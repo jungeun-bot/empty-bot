@@ -8,6 +8,7 @@ import { parseDateTimeString } from '../../views/common.js';
 import { getRoomById } from '../../config/rooms.js';
 import type { BookingEvent } from '../../types/index.js';
 import { logCancelToSheet, logEditToSheet } from '../../services/sheets-log.js';
+import { env } from '../../config/env.js';
 
 /** Slack 사용자 이메일 조회 헬퍼 */
 async function resolveUserEmail(
@@ -247,8 +248,9 @@ export function registerEditSubmit(app: App): void {
       const newPersonAttendees = [...new Set([...groupEmails, ...individualEmails])]
         .filter(email => email && email !== organizerEmail);
 
+      // 관리자 캘린더에서 모든 회의 확인 가능하도록 포함
       // 캘린더 업데이트용 전체 참석자 리스트 (사람 + 회의실 + 예약자)
-      const fullAttendees = [...new Set([...newPersonAttendees, newRoomId, organizerEmail])]
+      const fullAttendees = [...new Set([...newPersonAttendees, newRoomId, organizerEmail, env.google.adminEmail])]
         .filter(Boolean);
 
       // changes 구성
