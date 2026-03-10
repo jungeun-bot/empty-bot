@@ -109,4 +109,5 @@ export interface BookingEvent {
   attendees: string[];
   roomId: string;
   roomName: string;
+  bookerEmail?: string;
 }

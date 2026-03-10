@@ -100,7 +100,7 @@ export async function createBooking(request: BookingRequest): Promise<string> {
         { email: room.id, resource: true },
         // 예약자 본인을 참석자에 자동 포함 (중복 방지)
         ...(effectiveOrganizer && !attendees.some((a) => a.email === effectiveOrganizer)
-          ? [{ email: effectiveOrganizer }]
+          ? [{ email: effectiveOrganizer, responseStatus: 'accepted' as const }]
           : []),
         ...attendees.map((a) => ({ email: a.email, displayName: a.name })),
       ],
@@ -301,17 +301,21 @@ export async function listRoomEvents(roomId: string, date: Date): Promise<Bookin
     const events = response.data.items ?? [];
     const result = events
       .filter((e: calendar_v3.Schema$Event) => e.start?.dateTime && e.end?.dateTime)
-      .map((e: calendar_v3.Schema$Event) => ({
-        eventId: e.id ?? '',
-        summary: e.summary ?? '(제목 없음)',
-        startTime: new Date(e.start!.dateTime!),
-        endTime: new Date(e.end!.dateTime!),
-        organizer: e.organizer?.email ?? '',
-        creator: e.creator?.email ?? '',
-        attendees: (e.attendees ?? []).map((a: calendar_v3.Schema$EventAttendee) => a.email ?? '').filter(Boolean),
-        roomId,
-        roomName: '',
-      }));
+      .map((e: calendar_v3.Schema$Event) => {
+        const descMatch = (e.description ?? '').match(/예약자:\s*(\S+)/);
+        return {
+          eventId: e.id ?? '',
+          summary: e.summary ?? '(제목 없음)',
+          startTime: new Date(e.start!.dateTime!),
+          endTime: new Date(e.end!.dateTime!),
+          organizer: e.organizer?.email ?? '',
+          creator: e.creator?.email ?? '',
+          attendees: (e.attendees ?? []).map((a: calendar_v3.Schema$EventAttendee) => a.email ?? '').filter(Boolean),
+          roomId,
+          roomName: '',
+          bookerEmail: descMatch?.[1] || e.organizer?.email || '',
+        };
+      });
 
     // events.list 성공했지만 빈 배열인 경우 — 권한 부족으로 이벤트가 숨겨졌을 수 있음
     // freebusy로 재확인
@@ -386,6 +390,7 @@ export async function listUserBookings(userEmail: string, date: Date): Promise<B
         );
         const roomId = roomAttendee?.email ?? '';
         const room = ROOMS.find(r => r.id === roomId);
+        const descMatch2 = (e.description ?? '').match(/예약자:\s*(\S+)/);
         return {
           eventId: e.id ?? '',
           summary: e.summary ?? '(제목 없음)',
@@ -396,6 +401,7 @@ export async function listUserBookings(userEmail: string, date: Date): Promise<B
           attendees: (e.attendees ?? []).map((a: calendar_v3.Schema$EventAttendee) => a.email ?? '').filter(Boolean),
           roomId,
           roomName: room?.name ?? '',
+          bookerEmail: descMatch2?.[1] || e.organizer?.email || '',
         };
       })
       .filter(e => e.roomId !== '')
@@ -424,6 +430,7 @@ export async function getUserEvent(userEmail: string, eventId: string): Promise<
       const roomId = roomAttendee?.email ?? '';
       const room = ROOMS.find(r => r.id === roomId);
 
+      const descMatch3 = (e.description ?? '').match(/예약자:\s*(\S+)/);
       return {
         eventId: e.id ?? '',
         summary: e.summary ?? '(제목 없음)',
@@ -434,6 +441,7 @@ export async function getUserEvent(userEmail: string, eventId: string): Promise<
         attendees: (e.attendees ?? []).map((a: calendar_v3.Schema$EventAttendee) => a.email ?? '').filter(Boolean),
         roomId,
         roomName: room?.name ?? '',
+        bookerEmail: descMatch3?.[1] || e.organizer?.email || '',
       };
     });
   } catch {

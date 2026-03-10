@@ -68,8 +68,10 @@ export function registerStatusSubmit(app: App): void {
           });
         } else {
           const lines = events.map(
-            (ev) =>
-              `• ${formatKSTTime(ev.startTime)} ~ ${formatKSTTime(ev.endTime)}  ${ev.summary}`,
+            (ev) => {
+              const booker = ev.bookerEmail ? `  👤 ${ev.bookerEmail}` : '';
+              return `• ${formatKSTTime(ev.startTime)} ~ ${formatKSTTime(ev.endTime)}  ${ev.summary}${booker}`;
+            },
           );
           blocks.push({
             type: 'section' as const,
