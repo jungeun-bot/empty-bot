@@ -3,6 +3,7 @@ import { getAvailableRooms, createBooking } from '../../services/calendar.js';
 import { selectBestRoom } from '../../services/conversation.js';
 import { formatDateTime } from '../../views/common.js';
 import type { BookingRequest, Attendee } from '../../types/index.js';
+import { BOT_DISPLAY_NAME } from '../../config/env.js';
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
@@ -49,7 +50,7 @@ export function registerBookTodayMeetingFunction(app: App): void {
           if (todayNum > untilNum) {
             const skipMsg = `⏹️ 정기 회의 "${title}"의 반복 기간이 종료되었습니다. (종료일: ${repeatUntil})\n이 워크플로를 비활성화해주세요.`;
             if (notifyChannel) {
-              await client.chat.postMessage({ channel: notifyChannel, text: skipMsg });
+              await client.chat.postMessage({ channel: notifyChannel, text: skipMsg, username: BOT_DISPLAY_NAME });
             }
             await complete({ outputs: { event_id: '', room_name: '', message: skipMsg } });
             return;
@@ -94,6 +95,7 @@ export function registerBookTodayMeetingFunction(app: App): void {
           await client.chat.postMessage({
             channel: notifyChannel,
             text: `⚠️ 정기 회의 자동 예약 실패\n*회의:* ${title}\n${errorMsg}`,
+            username: BOT_DISPLAY_NAME,
           });
         }
 
@@ -125,6 +127,7 @@ export function registerBookTodayMeetingFunction(app: App): void {
         await client.chat.postMessage({
           channel: notifyChannel,
           text: successMsg,
+          username: BOT_DISPLAY_NAME,
         });
       }
 

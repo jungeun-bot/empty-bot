@@ -4,6 +4,7 @@ import { getAvailableRooms, createBooking } from '../../services/calendar.js';
 import { selectBestRoom } from '../../services/conversation.js';
 import { buildProcessingView, buildErrorView } from '../../views/result-views.js';
 import { parseDateTimeString, formatDateTime } from '../../views/common.js';
+import { BOT_DISPLAY_NAME } from '../../config/env.js';
 
 // 요일 매핑: Date.getDay() → RRULE BYDAY
 const DAY_MAP: Record<number, string> = {
@@ -276,6 +277,7 @@ export function registerRecurringSubmit(app: App): void {
       await client.chat.postMessage({
         channel: channelId || body.user.id,
         text: `🔁 *정기 회의가 예약되었습니다!*\n*회의 이름:* ${meetingTitle || '정기 회의'}\n*미팅룸:* ${selectedRoom.name} (최대 ${selectedRoom.capacity}인)\n*첫 회의:* ${formatDateTime(startTime)} ~ ${formatDateTime(endTime)}\n*반복:* ${recurrenceSummary}\n*참석자:* ${attendeeNames}\n\n구글 캘린더에 반복 일정이 생성되었으며, 참석자에게 초대장이 발송되었습니다.`,
+        username: BOT_DISPLAY_NAME,
       });
     } catch (error) {
       logger.error('recurring_modal 제출 처리 오류:', error);

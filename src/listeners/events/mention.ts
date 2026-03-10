@@ -2,6 +2,7 @@ import type { App } from '@slack/bolt';
 import type { KnownBlock } from '@slack/types';
 import type { PendingBooking } from '../../types/index.js';
 import { parseMessageIntent } from '../../services/message-parser.js';
+import { BOT_DISPLAY_NAME } from '../../config/env.js';
 import { getAvailableRooms, getRoomAvailableUntil } from '../../services/calendar.js';
 import {
   buildMentionResponse,
@@ -49,6 +50,7 @@ export function registerMentionHandler(app: App): void {
           channel: event.channel,
           user: event.user,
           text: reply,
+          username: BOT_DISPLAY_NAME,
         });
         return;
       }
@@ -60,6 +62,7 @@ export function registerMentionHandler(app: App): void {
           channel: event.channel,
           user: event.user,
           text: '신고/건의를 접수하려면 `/신고` 커맨드를 사용해주세요.',
+          username: BOT_DISPLAY_NAME,
         });
         return;
       }
@@ -77,6 +80,7 @@ export function registerMentionHandler(app: App): void {
           channel: event.channel,
           user: event.user,
           text: reply,
+          username: BOT_DISPLAY_NAME,
         });
         return;
       }
@@ -95,6 +99,7 @@ export function registerMentionHandler(app: App): void {
             channel: event.channel,
             user: event.user,
             text: reply,
+            username: BOT_DISPLAY_NAME,
           });
           return;
         }
@@ -105,6 +110,7 @@ export function registerMentionHandler(app: App): void {
           channel: event.channel,
           user: event.user,
           text: buildInfoPrompt(),
+          username: BOT_DISPLAY_NAME,
         });
         return;
       }
@@ -123,6 +129,7 @@ export function registerMentionHandler(app: App): void {
           user: event.user,
           blocks: buildNoRoomResponse(intent.parsedTime, intent.capacity) as KnownBlock[],
           text: '사용 가능한 미팅룸이 없습니다.',
+          username: BOT_DISPLAY_NAME,
         });
         return;
       }
@@ -159,6 +166,7 @@ export function registerMentionHandler(app: App): void {
           intent.capacity,
         ) as KnownBlock[],
         text: '사용 가능한 미팅룸 목록입니다.',
+        username: BOT_DISPLAY_NAME,
       });
     } catch (error) {
       const message =
@@ -172,6 +180,7 @@ export function registerMentionHandler(app: App): void {
           user: event.user,
           blocks: buildTimeErrorResponse(message) as KnownBlock[],
           text: `⚠️ ${message}`,
+          username: BOT_DISPLAY_NAME,
         });
         return;
       }
@@ -181,6 +190,7 @@ export function registerMentionHandler(app: App): void {
         channel: event.channel,
         user: event.user,
         text: `⚠️ ${message}`,
+        username: BOT_DISPLAY_NAME,
       });
     }
   });

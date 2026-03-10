@@ -4,6 +4,7 @@ import { getAvailableRooms, createBooking } from '../../services/calendar.js';
 import { buildRoomSelectionForm, buildProcessingView, buildErrorView } from '../../views/result-views.js';
 import { parseDateTimeString, formatDateTime } from '../../views/common.js';
 import { getRoomById, getRoomsByType } from '../../config/rooms.js';
+import { BOT_DISPLAY_NAME } from '../../config/env.js';
 
 // 대기 중인 예약 상태 저장 (모달 → 버튼 흐름)
 export const pendingBookings = new Map<string, PendingBooking>();
@@ -243,13 +244,13 @@ export function registerBookSubmit(app: App): void {
         const meta = JSON.parse(view.private_metadata ?? '{}') as { bookingId?: string };
         bookingId = meta.bookingId ?? '';
       } catch {
-        await client.chat.postMessage({ channel: body.user.id, text: '⚠️ 예약 정보를 찾을 수 없습니다.' });
+        await client.chat.postMessage({ channel: body.user.id, text: '⚠️ 예약 정보를 찾을 수 없습니다.', username: BOT_DISPLAY_NAME });
         return;
       }
 
       const booking = pendingBookings.get(bookingId);
       if (!booking) {
-        await client.chat.postMessage({ channel: body.user.id, text: '⏰ 예약 세션이 만료되었습니다. `/예약`을 다시 실행해주세요.' });
+        await client.chat.postMessage({ channel: body.user.id, text: '⏰ 예약 세션이 만료되었습니다. `/예약`을 다시 실행해주세요.', username: BOT_DISPLAY_NAME });
         return;
       }
 
@@ -257,7 +258,7 @@ export function registerBookSubmit(app: App): void {
       const roomId = view.state.values['room_select_block']?.['room_radio']?.selected_option?.value ?? '';
       const room = getRoomById(roomId);
       if (!room) {
-        await client.chat.postMessage({ channel: body.user.id, text: '⚠️ 선택한 미팅룸을 찾을 수 없습니다.' });
+        await client.chat.postMessage({ channel: body.user.id, text: '⚠️ 선택한 미팅룸을 찾을 수 없습니다.', username: BOT_DISPLAY_NAME });
         return;
       }
 
@@ -286,11 +287,12 @@ export function registerBookSubmit(app: App): void {
       await client.chat.postMessage({
         channel: booking.channelId || body.user.id,
         text: `✅ *예약 완료!*\n*회의 이름:* ${booking.meetingTitle || '(없음)'}\n*미팅룸:* ${room.name} (최대 ${room.capacity}인)\n*일시:* ${formatDateTime(booking.startTime)} ~ ${formatDateTime(booking.endTime!)}\n*참석자:* ${attendeeNames}\n\n구글 캘린더 초대장이 발송되었습니다.`,
+        username: BOT_DISPLAY_NAME,
       });
     } catch (error) {
       logger.error('book_room_select 처리 오류:', error);
       const errorMessage = error instanceof Error ? error.message : '⚠️ 예약 처리 중 오류가 발생했습니다.';
-      await client.chat.postMessage({ channel: body.user.id, text: `❌ ${errorMessage}` });
+      await client.chat.postMessage({ channel: body.user.id, text: `❌ ${errorMessage}`, username: BOT_DISPLAY_NAME });
     }
   });
 }

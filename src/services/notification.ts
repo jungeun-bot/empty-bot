@@ -1,6 +1,7 @@
 import type { WebClient } from '@slack/web-api';
 import type { BookingEvent } from '../types/index.js';
 import { formatDateTime } from '../views/common.js';
+import { BOT_DISPLAY_NAME } from '../config/env.js';
 
 export interface BookingChanges {
   summary?: { before: string; after: string };
@@ -74,6 +75,7 @@ async function sendDmToAttendees(
       await client.chat.postMessage({
         channel: userId,
         text: message,
+        username: BOT_DISPLAY_NAME,
       });
     } catch (error) {
       // DM 전송 실패 시 에러 로깅만 (throw 안 함)

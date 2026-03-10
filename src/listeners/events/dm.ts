@@ -1,5 +1,6 @@
 import type { App } from '@slack/bolt';
 import { parseMessageIntent } from '../../services/message-parser.js';
+import { BOT_DISPLAY_NAME } from '../../config/env.js';
 import {
   getConversation,
   processConversationReply,
@@ -42,7 +43,7 @@ export function registerDmHandler(app: App): void {
           text,
           userEmail,
         });
-        await client.chat.postMessage({ channel: channelId, text: reply });
+        await client.chat.postMessage({ channel: channelId, text: reply, username: BOT_DISPLAY_NAME });
         return;
       }
 
@@ -52,6 +53,7 @@ export function registerDmHandler(app: App): void {
         await client.chat.postMessage({
           channel: channelId,
           text: '신고/건의를 접수하려면 `/신고` 커맨드를 사용해주세요.',
+          username: BOT_DISPLAY_NAME,
         });
         return;
       }
@@ -63,6 +65,7 @@ export function registerDmHandler(app: App): void {
         await client.chat.postMessage({
           channel: channelId,
           text: '안녕하세요! 미팅룸 예약을 도와드립니다.\n예: "내일 오후 2시에 4명 미팅룸 예약해줘"',
+          username: BOT_DISPLAY_NAME,
         });
         return;
       }
@@ -70,7 +73,7 @@ export function registerDmHandler(app: App): void {
       // isEditIntent: 수정 의도 → /수정 안내
       if (intent.isEditIntent) {
         const reply = startEditConversation(userId, channelId);
-        await client.chat.postMessage({ channel: channelId, text: reply });
+        await client.chat.postMessage({ channel: channelId, text: reply, username: BOT_DISPLAY_NAME });
         return;
       }
 
@@ -84,14 +87,14 @@ export function registerDmHandler(app: App): void {
             intent.parsedTime,
             intent.endTime,
           );
-          await client.chat.postMessage({ channel: channelId, text: reply });
+          await client.chat.postMessage({ channel: channelId, text: reply, username: BOT_DISPLAY_NAME });
           return;
         }
 
         // 일반 미팅룸 예약
         // 일반 미팅룸 예약 — 항상 참석자 입력 단계부터 시작
         startConversation(userId, channelId, 'meeting', intent.parsedTime, intent.endTime, intent.capacity ?? undefined);
-        await client.chat.postMessage({ channel: channelId, text: buildInfoPrompt() });
+        await client.chat.postMessage({ channel: channelId, text: buildInfoPrompt(), username: BOT_DISPLAY_NAME });
         return;
       }
 
@@ -99,6 +102,7 @@ export function registerDmHandler(app: App): void {
       await client.chat.postMessage({
         channel: channelId,
         text: '안녕하세요! 미팅룸 예약을 도와드립니다.\n예: "내일 오후 2시에 4명 미팅룸 예약해줘"',
+        username: BOT_DISPLAY_NAME,
       });
     } catch (error) {
       logger.error('DM 처리 오류:', error);
@@ -106,6 +110,7 @@ export function registerDmHandler(app: App): void {
         await client.chat.postMessage({
           channel: channelId,
           text: '⚠️ 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+          username: BOT_DISPLAY_NAME,
         });
       } catch { /* 무시 */ }
     }

@@ -1,4 +1,5 @@
 import type { App } from '@slack/bolt';
+import { BOT_DISPLAY_NAME } from '../../config/env.js';
 
 export function registerHelpCommand(app: App): void {
   app.command('/사용방법', async ({ ack, respond, logger }) => {
@@ -7,6 +8,7 @@ export function registerHelpCommand(app: App): void {
     try {
       await respond({
         response_type: 'ephemeral',
+        username: BOT_DISPLAY_NAME,
         blocks: [
           {
             type: 'section',

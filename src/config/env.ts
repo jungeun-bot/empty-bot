@@ -32,6 +32,8 @@ export const env = {
   },
 } as const;
 
+export const BOT_DISPLAY_NAME = '빈방있소';
+
 // Google 인증 설정 검증 (KEY 또는 KEY_PATH 중 하나 필요)
 if (!env.google.serviceAccountKey && !env.google.serviceAccountKeyPath) {
   console.error('❌ Google 서비스 계정 설정 누락');

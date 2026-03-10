@@ -8,7 +8,7 @@ import { parseDateTimeString } from '../../views/common.js';
 import { getRoomById } from '../../config/rooms.js';
 import type { BookingEvent } from '../../types/index.js';
 import { logCancelToSheet, logEditToSheet } from '../../services/sheets-log.js';
-import { env } from '../../config/env.js';
+import { env, BOT_DISPLAY_NAME } from '../../config/env.js';
 
 /** Slack 사용자 이메일 조회 헬퍼 */
 async function resolveUserEmail(
@@ -234,6 +234,7 @@ export function registerEditSubmit(app: App): void {
         await client.chat.postMessage({
           channel: channelId || body.user.id,
           text: '❌ 선택한 예약을 찾을 수 없습니다. 이미 수정 또는 삭제되었을 수 있습니다.',
+          username: BOT_DISPLAY_NAME,
         });
         return;
       }
@@ -302,6 +303,7 @@ export function registerEditSubmit(app: App): void {
       await client.chat.postMessage({
         channel: channelId || body.user.id,
         text: '✅ 예약이 수정되었습니다.',
+        username: BOT_DISPLAY_NAME,
       });
     } catch (error) {
       logger.error('edit_booking_submit 처리 오류:', error);
@@ -309,6 +311,7 @@ export function registerEditSubmit(app: App): void {
       await client.chat.postMessage({
           channel: channelId || body.user.id,
         text: `❌ ${errorMessage}`,
+        username: BOT_DISPLAY_NAME,
       });
     }
   });
@@ -331,6 +334,7 @@ export function registerEditSubmit(app: App): void {
         await client.chat.postMessage({
           channel: channelId || body.user.id,
           text: '❌ 선택한 예약을 찾을 수 없습니다. 이미 삭제되었을 수 있습니다.',
+          username: BOT_DISPLAY_NAME,
         });
         return;
       }
@@ -352,6 +356,7 @@ export function registerEditSubmit(app: App): void {
       await client.chat.postMessage({
           channel: channelId || body.user.id,
         text: '🗑️ 예약이 취소되었습니다.',
+        username: BOT_DISPLAY_NAME,
       });
     } catch (error) {
       logger.error('edit_cancel_confirm 처리 오류:', error);
@@ -359,6 +364,7 @@ export function registerEditSubmit(app: App): void {
       await client.chat.postMessage({
           channel: channelId || body.user.id,
         text: `❌ ${errorMessage}`,
+        username: BOT_DISPLAY_NAME,
       });
     }
   });

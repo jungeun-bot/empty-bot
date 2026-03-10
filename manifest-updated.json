@@ -7,7 +7,7 @@
     },
     "features": {
         "bot_user": {
-            "display_name": "bingbang",
+            "display_name": "binbang-isso",
             "always_online": true
         },
         "slash_commands": [
@@ -62,6 +62,7 @@
                 "users:read",
                 "users:read.email",
                 "usergroups:read"
+                "chat:write.customize"
             ]
         }
     },

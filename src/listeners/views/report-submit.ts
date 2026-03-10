@@ -1,5 +1,5 @@
 import type { App } from '@slack/bolt';
-import { env } from '../../config/env.js';
+import { env, BOT_DISPLAY_NAME } from '../../config/env.js';
 
 export function registerReportSubmit(app: App): void {
   app.view('report_modal', async ({ ack, view, body, client, logger }) => {
@@ -40,6 +40,7 @@ export function registerReportSubmit(app: App): void {
           await client.chat.postMessage({
             channel: adminUserId,
             text: `📢 *새 신고/건의가 접수되었습니다*\n*신고자:* <@${userId}> (${userName})\n*유형:* ${typeLabel}\n*내용:*\n${content}\n*시간:* ${new Date().toLocaleString('ko-KR')}`,
+            username: BOT_DISPLAY_NAME,
           });
         } catch (adminError) {
           logger.warn('관리자 DM 전송 실패:', adminError);

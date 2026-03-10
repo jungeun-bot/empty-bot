@@ -4,6 +4,7 @@ import { createBooking } from '../../services/calendar.js';
 import { getRoomById } from '../../config/rooms.js';
 import { formatDateTime } from '../../views/common.js';
 import { pendingBookings } from './book-submit.js';
+import { BOT_DISPLAY_NAME } from '../../config/env.js';
 
 export function registerNowBookSubmit(app: App): void {
   app.view('now_book_end_time', async ({ ack, view, body, client, logger }) => {
@@ -25,6 +26,7 @@ export function registerNowBookSubmit(app: App): void {
         await client.chat.postMessage({
           channel: body.user.id,
           text: '⚠️ 예약 정보를 찾을 수 없습니다. 다시 시도해주세요.',
+          username: BOT_DISPLAY_NAME,
         });
         return;
       }
@@ -34,6 +36,7 @@ export function registerNowBookSubmit(app: App): void {
         await client.chat.postMessage({
           channel: body.user.id,
           text: '⏰ 예약 세션이 만료되었습니다. `/즉시예약`을 다시 실행해주세요.',
+          username: BOT_DISPLAY_NAME,
         });
         return;
       }
@@ -43,6 +46,7 @@ export function registerNowBookSubmit(app: App): void {
         await client.chat.postMessage({
           channel: body.user.id,
           text: '⚠️ 선택한 미팅룸을 찾을 수 없습니다.',
+          username: BOT_DISPLAY_NAME,
         });
         return;
       }
@@ -150,6 +154,7 @@ export function registerNowBookSubmit(app: App): void {
       await client.chat.postMessage({
         channel: booking.channelId || body.user.id,
         text: `✅ *예약 완료!*\n*회의 이름:* ${meetingTitle || '(없음)'}\n*미팅룸:* ${room.name} (최대 ${room.capacity}인)\n*일시:* ${formatDateTime(startTime)} ~ ${formatDateTime(endTime)}\n*참석자:* ${attendeeNames}\n\n구글 캘린더 초대장이 발송되었습니다.`,
+        username: BOT_DISPLAY_NAME,
       });
     } catch (error) {
       logger.error('now_book_end_time 제출 처리 오류:', error);
@@ -158,7 +163,7 @@ export function registerNowBookSubmit(app: App): void {
           ? error.message
           : '⚠️ 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
       try {
-        await client.chat.postMessage({ channel: body.user.id, text: `❌ ${errorMessage}` });
+        await client.chat.postMessage({ channel: body.user.id, text: `❌ ${errorMessage}`, username: BOT_DISPLAY_NAME });
       } catch {
         // 메시지 전송 실패 무시
       }
