@@ -90,8 +90,8 @@ export function registerRecurringSubmit(app: App): void {
       const roomType = (values['room_type_block']?.['recurring_type_select']?.selected_option?.value ?? 'meeting') as 'meeting' | 'focus';
       const meetingTitle = values['title_block']?.['title_input']?.value ?? '';
       const dateStr = values['date_block']?.['date_input']?.selected_date;
-      const startTimeStr = values['start_time_block']?.['start_time_input']?.selected_option?.value;
-      const endTimeStr = values['end_time_block']?.['end_time_input']?.selected_option?.value;
+      const startTimeStr = values['start_time_block']?.['start_time_input']?.selected_time;
+      const endTimeStr = values['end_time_block']?.['end_time_input']?.selected_time;
       const frequency = values['frequency_block']?.['frequency_input']?.selected_option?.value;
       const untilDateStr = values['until_block']?.['until_input']?.selected_date;
 

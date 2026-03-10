@@ -33,8 +33,8 @@ export function registerRecurringCommand(app: App): void {
         channelId = meta.channelId ?? '';
       } catch { /* 무시 */ }
 
-      const startOpt = values['start_time_block']?.['start_time_input']?.selected_option;
-      const endOpt = values['end_time_block']?.['end_time_input']?.selected_option;
+      const startTimeVal = values['start_time_block']?.['start_time_input']?.selected_time as string | undefined;
+      const endTimeVal = values['end_time_block']?.['end_time_input']?.selected_time as string | undefined;
       const freqOpt = values['frequency_block']?.['frequency_input']?.selected_option;
 
       await client.views.update({
@@ -44,8 +44,8 @@ export function registerRecurringCommand(app: App): void {
           initialValues: {
             title: values['title_block']?.['title_input']?.value ?? undefined,
             date: values['date_block']?.['date_input']?.selected_date ?? undefined,
-            startTime: startOpt ? { text: startOpt.text as { type: 'plain_text'; text: string }, value: startOpt.value } : undefined,
-            endTime: endOpt ? { text: endOpt.text as { type: 'plain_text'; text: string }, value: endOpt.value } : undefined,
+            startTime: startTimeVal ?? undefined,
+            endTime: endTimeVal ?? undefined,
             frequency: freqOpt ? { text: freqOpt.text as { type: 'plain_text'; text: string }, value: freqOpt.value } : undefined,
             until: values['until_block']?.['until_input']?.selected_date ?? undefined,
             guestEmails: values['guest_emails_block']?.['guest_emails_input']?.value ?? undefined,

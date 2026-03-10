@@ -69,10 +69,9 @@ export function registerBookTypeSelectAction(app: App): void {
               block_id: 'start_time_block',
               label: { type: 'plain_text' as const, text: '🕐 시작 시간', emoji: true },
               element: {
-                type: 'static_select' as const,
+                type: 'timepicker' as const,
                 action_id: 'start_time_input',
                 placeholder: { type: 'plain_text' as const, text: '시작 시간 선택', emoji: false },
-                options: generateTimeOptionsInline(),
               },
             },
             {
@@ -80,10 +79,9 @@ export function registerBookTypeSelectAction(app: App): void {
               block_id: 'end_time_block',
               label: { type: 'plain_text' as const, text: '🕐 종료 시간', emoji: true },
               element: {
-                type: 'static_select' as const,
+                type: 'timepicker' as const,
                 action_id: 'end_time_input',
                 placeholder: { type: 'plain_text' as const, text: '종료 시간 선택', emoji: false },
-                options: generateTimeOptionsInline(),
               },
             },
           ],
@@ -103,18 +101,3 @@ export function registerBookTypeSelectAction(app: App): void {
   });
 }
 
-function generateTimeOptionsInline() {
-  const options = [];
-  for (let h = 8; h <= 20; h++) {
-    for (const m of [0, 30]) {
-      if (h === 20 && m === 30) break;
-      const hh = String(h).padStart(2, '0');
-      const mm = String(m).padStart(2, '0');
-      options.push({
-        text: { type: 'plain_text' as const, text: `${hh}:${mm}`, emoji: false },
-        value: `${hh}:${mm}`,
-      });
-    }
-  }
-  return options;
-}

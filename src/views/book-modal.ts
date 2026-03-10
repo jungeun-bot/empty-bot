@@ -1,5 +1,3 @@
-import { generateTimeOptions } from './common.js';
-
 /** 모달 재구성 시 기존 입력값 보존을 위한 옵션 */
 export interface BookModalOptions {
   /** 게스트 이메일 입력 필드 표시 여부 */
@@ -8,15 +6,14 @@ export interface BookModalOptions {
   initialValues?: {
     title?: string;
     date?: string;
-    startTime?: { text: { type: 'plain_text'; text: string }; value: string };
-    endTime?: { text: { type: 'plain_text'; text: string }; value: string };
+    startTime?: string;
+    endTime?: string;
     attendees?: Array<{ text: { type: 'plain_text'; text: string }; value: string }>;
     guestEmails?: string;
   };
 }
 
 export function buildBookModal(channelId: string, options: BookModalOptions = {}) {
-  const timeOptions = generateTimeOptions();
   const iv = options.initialValues;
 
   return {
@@ -68,11 +65,10 @@ export function buildBookModal(channelId: string, options: BookModalOptions = {}
         block_id: 'start_time_block',
         label: { type: 'plain_text' as const, text: '🕐 시작 시간', emoji: true },
         element: {
-          type: 'static_select' as const,
+          type: 'timepicker' as const,
           action_id: 'start_time_input',
           placeholder: { type: 'plain_text' as const, text: '시작 시간 선택', emoji: false },
-          options: timeOptions,
-          ...(iv?.startTime ? { initial_option: iv.startTime } : {}),
+          ...(iv?.startTime ? { initial_time: iv.startTime } : {}),
         },
       },
       {
@@ -80,11 +76,10 @@ export function buildBookModal(channelId: string, options: BookModalOptions = {}
         block_id: 'end_time_block',
         label: { type: 'plain_text' as const, text: '🕐 종료 시간', emoji: true },
         element: {
-          type: 'static_select' as const,
+          type: 'timepicker' as const,
           action_id: 'end_time_input',
           placeholder: { type: 'plain_text' as const, text: '종료 시간 선택', emoji: false },
-          options: timeOptions,
-          ...(iv?.endTime ? { initial_option: iv.endTime } : {}),
+          ...(iv?.endTime ? { initial_time: iv.endTime } : {}),
         },
       },
       {

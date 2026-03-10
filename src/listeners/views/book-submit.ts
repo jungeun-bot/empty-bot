@@ -35,8 +35,8 @@ export function registerBookSubmit(app: App): void {
 
       // 공통 폼 값 추출
       const dateStr = values['date_block']?.['date_input']?.selected_date;
-      const startTimeStr = values['start_time_block']?.['start_time_input']?.selected_option?.value;
-      const endTimeStr = values['end_time_block']?.['end_time_input']?.selected_option?.value;
+      const startTimeStr = values['start_time_block']?.['start_time_input']?.selected_time;
+      const endTimeStr = values['end_time_block']?.['end_time_input']?.selected_time;
       const meetingTitle = values['title_block']?.['title_input']?.value ?? '';
 
       if (!dateStr || !startTimeStr || !endTimeStr) {

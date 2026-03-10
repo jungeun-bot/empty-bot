@@ -2,34 +2,10 @@
  * 공통 유틸리티 함수
  */
 
-export interface TimeOption {
-  text: { type: 'plain_text'; text: string; emoji: boolean };
-  value: string;
-}
-
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 export function toKST(date: Date): Date {
   return new Date(date.getTime() + KST_OFFSET_MS);
-}
-
-/**
- * 08:00 ~ 20:00 사이의 30분 단위 시간 옵션 생성
- */
-export function generateTimeOptions(): TimeOption[] {
-  const options: TimeOption[] = [];
-  for (let hour = 8; hour <= 20; hour++) {
-    for (const minute of [0, 30]) {
-      const h = String(hour).padStart(2, '0');
-      const m = String(minute).padStart(2, '0');
-      const time = `${h}:${m}`;
-      options.push({
-        text: { type: 'plain_text', text: time, emoji: false },
-        value: time,
-      });
-    }
-  }
-  return options;
 }
 
 /**

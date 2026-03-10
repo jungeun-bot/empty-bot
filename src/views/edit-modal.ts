@@ -19,23 +19,6 @@ function extractTimeStr(date: Date): string {
   return `${h}:${m}`;
 }
 
-function generateEditTimeOptions() {
-  const options: { text: { type: 'plain_text'; text: string; emoji: boolean }; value: string }[] = [];
-  for (let hour = 8; hour <= 20; hour++) {
-    for (const minute of [0, 30]) {
-      if (hour === 20 && minute === 30) continue;
-      const h = String(hour).padStart(2, '0');
-      const m = String(minute).padStart(2, '0');
-      const time = `${h}:${m}`;
-      options.push({
-        text: { type: 'plain_text' as const, text: time, emoji: false },
-        value: time,
-      });
-    }
-  }
-  return options;
-}
-
 export function buildDateRoomSelectModal(channelId?: string) {
   return {
     type: 'modal' as const,
@@ -150,13 +133,9 @@ export function buildBookingListModal(bookings: BookingEvent[], channelId?: stri
 }
 
 export function buildEditBookingModal(booking: BookingEvent, channelId?: string) {
-  const timeOptions = generateEditTimeOptions();
   const currentStartTime = extractTimeStr(booking.startTime);
   const currentEndTime = extractTimeStr(booking.endTime);
   const currentDate = formatDateYMD(booking.startTime);
-
-  const startInitial = timeOptions.find(o => o.value === currentStartTime) ?? timeOptions[0]!;
-  const endInitial = timeOptions.find(o => o.value === currentEndTime) ?? timeOptions[0]!;
 
   // 회의실 옵션
   const roomOptions = ROOMS.map(r => ({
@@ -245,10 +224,9 @@ export function buildEditBookingModal(booking: BookingEvent, channelId?: string)
           emoji: true,
         },
         element: {
-          type: 'static_select' as const,
+          type: 'timepicker' as const,
           action_id: 'start_time_input',
-          options: timeOptions,
-          initial_option: startInitial,
+          initial_time: currentStartTime,
         },
       },
       {
@@ -260,10 +238,9 @@ export function buildEditBookingModal(booking: BookingEvent, channelId?: string)
           emoji: true,
         },
         element: {
-          type: 'static_select' as const,
+          type: 'timepicker' as const,
           action_id: 'end_time_input',
-          options: timeOptions,
-          initial_option: endInitial,
+          initial_time: currentEndTime,
         },
       },
       {

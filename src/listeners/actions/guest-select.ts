@@ -76,10 +76,10 @@ export function registerGuestSelectAction(app: App): void {
       const titleVal = values['title_block']?.['title_input'] as { value?: string } | undefined;
       const dateVal = values['date_block']?.['date_input'] as { selected_date?: string } | undefined;
       const startVal = values['start_time_block']?.['start_time_input'] as {
-        selected_option?: { text: { type: 'plain_text'; text: string }; value: string };
+        selected_time?: string;
       } | undefined;
       const endVal = values['end_time_block']?.['end_time_input'] as {
-        selected_option?: { text: { type: 'plain_text'; text: string }; value: string };
+        selected_time?: string;
       } | undefined;
       const attendeesVal = values['attendees_block']?.['attendees_input'] as {
         selected_options?: Array<{ text: { type: 'plain_text'; text: string }; value: string }>;
@@ -92,8 +92,8 @@ export function registerGuestSelectAction(app: App): void {
         initialValues: {
           title: titleVal?.value ?? undefined,
           date: dateVal?.selected_date ?? undefined,
-          startTime: startVal?.selected_option ?? undefined,
-          endTime: endVal?.selected_option ?? undefined,
+          startTime: startVal?.selected_time ?? undefined,
+          endTime: endVal?.selected_time ?? undefined,
           attendees: attendeesVal?.selected_options ?? undefined,
           guestEmails: guestEmailsVal?.value ?? undefined,
         },

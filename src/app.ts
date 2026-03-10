@@ -4,6 +4,7 @@ import { App, LogLevel } from '@slack/bolt';
 import { env } from './config/env.js';
 import { registerListeners } from './listeners/index.js';
 import { warmUpSlackUserCache } from './services/directory.js';
+import { startNotificationScheduler } from './services/notification-scheduler.js';
 
 const app = new App({
   token: env.slack.botToken,
@@ -35,6 +36,8 @@ app.start().then(() => {
   warmUpSlackUserCache(app.client).catch((err) =>
     console.warn('Slack 사용자 캐시 사전 로드 실패:', err),
   );
+  // 회의 알림 스케줄러 시작
+  startNotificationScheduler(app.client);
 }).catch((error: unknown) => {
   console.error('앱 시작 실패:', error);
   process.exit(1);

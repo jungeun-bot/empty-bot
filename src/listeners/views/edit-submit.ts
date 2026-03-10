@@ -190,8 +190,8 @@ export function registerEditSubmit(app: App): void {
       const newSummary = values['title_block']?.['title_input']?.value ?? '';
       const newRoomId = values['room_block']?.['room_input']?.selected_option?.value ?? oldRoomId;
       const newDateStr = values['date_block']?.['date_input']?.selected_date ?? '';
-      const newStartTimeStr = values['start_time_block']?.['start_time_input']?.selected_option?.value ?? '';
-      const newEndTimeStr = values['end_time_block']?.['end_time_input']?.selected_option?.value ?? '';
+      const newStartTimeStr = values['start_time_block']?.['start_time_input']?.selected_time ?? '';
+      const newEndTimeStr = values['end_time_block']?.['end_time_input']?.selected_time ?? '';
 
       const newStartTime = parseDateTimeString(newDateStr, newStartTimeStr);
       const newEndTime = parseDateTimeString(newDateStr, newEndTimeStr);

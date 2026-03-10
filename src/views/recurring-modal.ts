@@ -1,13 +1,11 @@
-import { generateTimeOptions } from './common.js';
-
 /** /정기회의 모달 옵션 (dispatch_action 재구성용) */
 export interface RecurringModalOptions {
   showGuestEmails?: boolean;
   initialValues?: {
     title?: string;
     date?: string;
-    startTime?: { text: { type: 'plain_text'; text: string }; value: string };
-    endTime?: { text: { type: 'plain_text'; text: string }; value: string };
+    startTime?: string;
+    endTime?: string;
     frequency?: { text: { type: 'plain_text'; text: string }; value: string };
     until?: string;
     attendees?: Array<{ text: { type: 'plain_text'; text: string }; value: string }>;
@@ -16,7 +14,6 @@ export interface RecurringModalOptions {
 }
 
 export function buildRecurringModal(channelId: string, options: RecurringModalOptions = {}) {
-  const timeOptions = generateTimeOptions();
   const iv = options.initialValues;
 
   return {
@@ -69,11 +66,10 @@ export function buildRecurringModal(channelId: string, options: RecurringModalOp
         block_id: 'start_time_block',
         label: { type: 'plain_text' as const, text: '🕐 시작 시간', emoji: true },
         element: {
-          type: 'static_select' as const,
+          type: 'timepicker' as const,
           action_id: 'start_time_input',
           placeholder: { type: 'plain_text' as const, text: '시작 시간 선택', emoji: false },
-          options: timeOptions,
-          ...(iv?.startTime ? { initial_option: iv.startTime } : {}),
+          ...(iv?.startTime ? { initial_time: iv.startTime } : {}),
         },
       },
       {
@@ -81,11 +77,10 @@ export function buildRecurringModal(channelId: string, options: RecurringModalOp
         block_id: 'end_time_block',
         label: { type: 'plain_text' as const, text: '🕐 종료 시간', emoji: true },
         element: {
-          type: 'static_select' as const,
+          type: 'timepicker' as const,
           action_id: 'end_time_input',
           placeholder: { type: 'plain_text' as const, text: '종료 시간 선택', emoji: false },
-          options: timeOptions,
-          ...(iv?.endTime ? { initial_option: iv.endTime } : {}),
+          ...(iv?.endTime ? { initial_time: iv.endTime } : {}),
         },
       },
       {
