@@ -298,3 +298,110 @@ export function buildCancelConfirmModal(booking: BookingEvent, channelId?: strin
     ],
   };
 }
+
+/**
+ * 정기회의 수정 방식 선택 모달
+ * '이 일정만 수정' vs '전체 정기일정 시간 변경'
+ */
+export function buildRecurringEditChoiceModal(booking: BookingEvent, channelId: string) {
+  return {
+    type: 'modal' as const,
+    callback_id: 'recurring_edit_choice',
+    private_metadata: JSON.stringify({
+      eventId: booking.eventId,
+      roomId: booking.roomId,
+      recurringEventId: booking.recurringEventId,
+      channelId,
+    }),
+    title: { type: 'plain_text' as const, text: '정기회의 수정', emoji: true },
+    submit: { type: 'plain_text' as const, text: '다음', emoji: true },
+    close: { type: 'plain_text' as const, text: '취소', emoji: true },
+    blocks: [
+      {
+        type: 'section' as const,
+        text: {
+          type: 'mrkdwn' as const,
+          text: `🔁 *${booking.summary}*\n이 일정은 정기회의입니다. 수정 방식을 선택해주세요.`,
+        },
+      },
+      {
+        type: 'input' as const,
+        block_id: 'recurring_choice_block',
+        label: { type: 'plain_text' as const, text: '수정 범위', emoji: true },
+        element: {
+          type: 'radio_buttons' as const,
+          action_id: 'recurring_choice',
+          initial_option: {
+            text: { type: 'plain_text' as const, text: '📅 이 일정만 수정', emoji: true },
+            value: 'single',
+          },
+          options: [
+            {
+              text: { type: 'plain_text' as const, text: '📅 이 일정만 수정', emoji: true },
+              value: 'single',
+            },
+            {
+              text: { type: 'plain_text' as const, text: '🔁 전체 정기일정 시간 변경', emoji: true },
+              value: 'all',
+            },
+          ],
+        },
+      },
+    ],
+  };
+}
+
+/**
+ * 정기회의 전체 시간 변경 모달 (시간만 수정)
+ */
+export function buildRecurringTimeEditModal(booking: BookingEvent, channelId: string) {
+  const kstOffset = 9 * 60 * 60 * 1000;
+  const startKst = new Date(booking.startTime.getTime() + kstOffset);
+  const endKst = new Date(booking.endTime.getTime() + kstOffset);
+  const currentStartTime = `${String(startKst.getUTCHours()).padStart(2, '0')}:${String(startKst.getUTCMinutes()).padStart(2, '0')}`;
+  const currentEndTime = `${String(endKst.getUTCHours()).padStart(2, '0')}:${String(endKst.getUTCMinutes()).padStart(2, '0')}`;
+
+  return {
+    type: 'modal' as const,
+    callback_id: 'recurring_time_edit_submit',
+    private_metadata: JSON.stringify({
+      recurringEventId: booking.recurringEventId,
+      roomId: booking.roomId,
+      channelId,
+    }),
+    title: { type: 'plain_text' as const, text: '정기회의 시간 변경', emoji: true },
+    submit: { type: 'plain_text' as const, text: '전체 변경', emoji: true },
+    close: { type: 'plain_text' as const, text: '취소', emoji: true },
+    blocks: [
+      {
+        type: 'section' as const,
+        text: {
+          type: 'mrkdwn' as const,
+          text: `🔁 *${booking.summary}*\n모든 정기일정의 시간이 변경됩니다.`,
+        },
+      },
+      {
+        type: 'input' as const,
+        block_id: 'start_time_block',
+        label: { type: 'plain_text' as const, text: '🕐 시작 시간', emoji: true },
+        element: {
+          type: 'plain_text_input' as const,
+          action_id: 'start_time_input',
+          placeholder: { type: 'plain_text' as const, text: 'HH:MM (예: 09:15, 14:45)', emoji: false },
+          initial_value: currentStartTime,
+        },
+      },
+      {
+        type: 'input' as const,
+        block_id: 'end_time_block',
+        label: { type: 'plain_text' as const, text: '🕐 종료 시간', emoji: true },
+        element: {
+          type: 'plain_text_input' as const,
+          action_id: 'end_time_input',
+          placeholder: { type: 'plain_text' as const, text: 'HH:MM (예: 17:00, 18:30)', emoji: false },
+          initial_value: currentEndTime,
+        },
+      },
+    ],
+  };
+}

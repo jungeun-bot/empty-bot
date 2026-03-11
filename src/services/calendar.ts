@@ -412,6 +412,7 @@ export async function listUserBookings(userEmail: string, date: Date): Promise<B
           roomName: room?.name ?? '',
           bookerEmail: emailInParens2 || descRaw2 || e.organizer?.email || '',
           bookerName: emailInParens2 ? descRaw2.replace(/\s*\(.*\)$/, '').trim() : '',
+          recurringEventId: (e.recurringEventId as string | undefined) ?? undefined,
         };
       })
       .filter(e => e.roomId !== '')
@@ -454,6 +455,7 @@ export async function getUserEvent(userEmail: string, eventId: string): Promise<
         roomName: room?.name ?? '',
         bookerEmail: emailInParens3 || descRaw3 || e.organizer?.email || '',
         bookerName: emailInParens3 ? descRaw3.replace(/\s*\(.*\)$/, '').trim() : '',
+        recurringEventId: (e.recurringEventId as string | undefined) ?? undefined,
       };
     });
   } catch {
@@ -529,6 +531,38 @@ export async function updateBooking(
     const calendar = getRoomCalendarClient();
     await doUpdate(calendar, roomId);
   }
+}
+
+/**
+ * 정기회의 전체 시리즈 시간 수정
+ * 마스터 이벤트의 start/end를 패치하여 모든 인스턴스에 일괄 적용
+ * DWD 인증 실패 시 admin fallback
+ */
+export async function updateRecurringSeries(
+  masterEventId: string,
+  updates: { startTime: Date; endTime: Date },
+  organizerEmail: string,
+): Promise<void> {
+  await withCalendarFallback(organizerEmail, async (calendar) => {
+    const existing = await calendar.events.get({
+      calendarId: 'primary',
+      eventId: masterEventId,
+    });
+
+    if (!existing.data.recurrence || existing.data.recurrence.length === 0) {
+      throw new Error('이 이벤트는 정기회의가 아닙니다.');
+    }
+
+    await calendar.events.patch({
+      calendarId: 'primary',
+      eventId: masterEventId,
+      sendUpdates: 'all',
+      requestBody: {
+        start: { dateTime: updates.startTime.toISOString(), timeZone: env.google.timezone },
+        end: { dateTime: updates.endTime.toISOString(), timeZone: env.google.timezone },
+      },
+    });
+  });
 }
 
 /**

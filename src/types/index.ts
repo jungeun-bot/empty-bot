@@ -113,4 +113,5 @@ export interface BookingEvent {
   roomName: string;
   bookerEmail?: string;
   bookerName?: string;
+  recurringEventId?: string;  // 정기회의 마스터 이벤트 ID (인스턴스인 경우)
 }

@@ -1,8 +1,8 @@
 import type { App } from '@slack/bolt';
-import { listUserBookings, getUserEvent, updateBooking, cancelBooking } from '../../services/calendar.js';
+import { listUserBookings, getUserEvent, updateBooking, cancelBooking, updateRecurringSeries } from '../../services/calendar.js';
 import { sendChangeNotification, sendCancelNotification } from '../../services/notification.js';
 import type { BookingChanges } from '../../services/notification.js';
-import { buildBookingListModal, buildEditBookingModal, buildCancelConfirmModal } from '../../views/edit-modal.js';
+import { buildBookingListModal, buildEditBookingModal, buildCancelConfirmModal, buildRecurringEditChoiceModal, buildRecurringTimeEditModal } from '../../views/edit-modal.js';
 import { buildProcessingView, buildErrorView } from '../../views/result-views.js';
 import { parseDateTimeString, validateTimeInput } from '../../views/common.js';
 import { getRoomById } from '../../config/rooms.js';
@@ -156,6 +156,12 @@ export function registerEditSubmit(app: App): void {
         await client.views.update({
           view_id: body.view?.id ?? '',
           view: buildCancelConfirmModal(booking, channelId),
+        });
+      } else if (action === 'edit' && booking.recurringEventId) {
+        // 정기회의 → 수정 방식 선택 모달
+        await client.views.update({
+          view_id: body.view?.id ?? '',
+          view: buildRecurringEditChoiceModal(booking, channelId),
         });
       } else {
         await client.views.update({
@@ -377,6 +383,125 @@ export function registerEditSubmit(app: App): void {
       const errorMessage = error instanceof Error ? error.message : '⚠️ 예약 취소 중 오류가 발생했습니다.';
       await client.chat.postMessage({
           channel: channelId || body.user.id,
+        text: `❌ ${errorMessage}`,
+        username: BOT_DISPLAY_NAME,
+      });
+    }
+  });
+
+  // 5. 정기회의 수정 방식 선택 처리
+  app.view('recurring_edit_choice', async ({ ack, view, body, client, logger }) => {
+    const meta = JSON.parse(view.private_metadata ?? '{}') as {
+      eventId?: string; roomId?: string; recurringEventId?: string; channelId?: string;
+    };
+    const values = view.state.values;
+    const choice = values['recurring_choice_block']?.['recurring_choice']?.selected_option?.value ?? 'single';
+
+    try {
+      const organizerEmail = await resolveUserEmail(client, body.user.id);
+      const booking = await getUserEvent(organizerEmail, meta.eventId ?? '');
+
+      if (!booking) {
+        await ack({
+          response_action: 'update',
+          view: buildErrorView('예약을 찾을 수 없습니다.'),
+        });
+        return;
+      }
+
+      if (!booking.roomId && meta.roomId) {
+        booking.roomId = meta.roomId;
+        const room = getRoomById(meta.roomId);
+        booking.roomName = room?.name ?? '';
+      }
+      if (!booking.recurringEventId && meta.recurringEventId) {
+        booking.recurringEventId = meta.recurringEventId;
+      }
+
+      if (choice === 'all') {
+        // 전체 정기일정 시간 변경 모달
+        await ack({
+          response_action: 'update',
+          view: buildRecurringTimeEditModal(booking, meta.channelId ?? ''),
+        });
+      } else {
+        // 이 일정만 수정 → 기존 수정 모달
+        await ack({
+          response_action: 'update',
+          view: buildEditBookingModal(booking, meta.channelId ?? ''),
+        });
+      }
+    } catch (error) {
+      logger.error('recurring_edit_choice 처리 오류:', error);
+      await ack({
+        response_action: 'update',
+        view: buildErrorView('⚠️ 정기회의 정보를 불러오는 중 오류가 발생했습니다.'),
+      });
+    }
+  });
+
+  // 6. 정기회의 전체 시간 변경 제출
+  app.view('recurring_time_edit_submit', async ({ ack, view, body, client, logger }) => {
+    await ack({ response_action: 'clear' });
+    const meta = JSON.parse(view.private_metadata ?? '{}') as {
+      recurringEventId?: string; roomId?: string; channelId?: string;
+    };
+    const channelId = meta.channelId ?? '';
+
+    try {
+      const values = view.state.values;
+      const startTimeStr = values['start_time_block']?.['start_time_input']?.value ?? '';
+      const endTimeStr = values['end_time_block']?.['end_time_input']?.value ?? '';
+
+      const validStart = validateTimeInput(startTimeStr);
+      const validEnd = validateTimeInput(endTimeStr);
+      if (!validStart || !validEnd) {
+        await client.chat.postMessage({
+          channel: channelId || body.user.id,
+          text: '❌ 시간 형식이 올바르지 않습니다. HH:MM 형식으로 입력해주세요.',
+          username: BOT_DISPLAY_NAME,
+        });
+        return;
+      }
+
+      // 마스터 이벤트의 기존 날짜를 기준으로 시간만 변경
+      const organizerEmail = await resolveUserEmail(client, body.user.id);
+      const masterEventId = meta.recurringEventId ?? '';
+
+      // 마스터 이벤트의 기존 날짜 조회
+      const masterEvent = await getUserEvent(organizerEmail, masterEventId);
+      if (!masterEvent) {
+        await client.chat.postMessage({
+          channel: channelId || body.user.id,
+          text: '❌ 정기회의 원본을 찾을 수 없습니다.',
+          username: BOT_DISPLAY_NAME,
+        });
+        return;
+      }
+
+      // 기존 날짜(YYYY-MM-DD) 추출
+      const kstOffset = 9 * 60 * 60 * 1000;
+      const masterKst = new Date(masterEvent.startTime.getTime() + kstOffset);
+      const dateStr = `${masterKst.getUTCFullYear()}-${String(masterKst.getUTCMonth() + 1).padStart(2, '0')}-${String(masterKst.getUTCDate()).padStart(2, '0')}`;
+
+      const newStartTime = parseDateTimeString(dateStr, validStart);
+      const newEndTime = parseDateTimeString(dateStr, validEnd);
+
+      await updateRecurringSeries(masterEventId, {
+        startTime: newStartTime,
+        endTime: newEndTime,
+      }, organizerEmail);
+
+      await client.chat.postMessage({
+        channel: channelId || body.user.id,
+        text: `✅ 정기회의 전체 시간이 변경되었습니다.\n*회의:* ${masterEvent.summary}\n*변경된 시간:* ${validStart} ~ ${validEnd}`,
+        username: BOT_DISPLAY_NAME,
+      });
+    } catch (error) {
+      logger.error('recurring_time_edit_submit 처리 오류:', error);
+      const errorMessage = error instanceof Error ? error.message : '⚠️ 정기회의 수정 중 오류가 발생했습니다.';
+      await client.chat.postMessage({
+        channel: channelId || body.user.id,
         text: `❌ ${errorMessage}`,
         username: BOT_DISPLAY_NAME,
       });
