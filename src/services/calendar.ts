@@ -464,7 +464,9 @@ export async function getUserEvent(userEmail: string, eventId: string): Promise<
 /**
  * 예약 수정
  * GET → merge → PATCH 패턴으로 기존 참석자 유지
+ * 회의실 리소스에 resource: true 플래그 보존 (중복예약 방지)
  * DWD 인증 실패 시 admin fallback
+ * 정기회의 개별 인스턴스 수정 허용
  */
 export async function updateBooking(
   eventId: string,
@@ -475,20 +477,35 @@ export async function updateBooking(
   const doUpdate = async (calendar: ReturnType<typeof getCalendarClientForUser>, calendarId: string) => {
     const existing = await calendar.events.get({ calendarId, eventId });
 
-    if (existing.data.recurringEventId) {
-      throw new Error('반복 이벤트는 수정할 수 없습니다.');
-    }
-
     const startTime = updates.startTime ?? new Date(existing.data.start?.dateTime ?? '');
     if (startTime.getTime() < Date.now()) {
       throw new Error('이미 지난 예약은 수정할 수 없습니다.');
     }
 
+    // 참석자 병합: 회의실 리소스에 resource: true 플래그 보존
     const existingAttendees = existing.data.attendees ?? [];
     const newAttendeeEmails = updates.attendees ?? [];
-    const mergedAttendees = newAttendeeEmails.length > 0
-      ? newAttendeeEmails.map(email => ({ email }))
-      : existingAttendees;
+    let mergedAttendees: Array<{ email: string; resource?: boolean; responseStatus?: string }>;
+
+    if (newAttendeeEmails.length > 0) {
+      mergedAttendees = newAttendeeEmails.map(email => {
+        if (email.endsWith('@resource.calendar.google.com')) {
+          return { email, resource: true };
+        }
+        // 기존 참석자의 responseStatus 보존 (accepted 등)
+        const prev = existingAttendees.find(a => a.email === email);
+        if (prev?.responseStatus) {
+          return { email, responseStatus: prev.responseStatus };
+        }
+        return { email };
+      });
+    } else {
+      mergedAttendees = existingAttendees.map(a => ({
+        email: a.email ?? '',
+        ...(a.resource ? { resource: true } : {}),
+        ...(a.responseStatus ? { responseStatus: a.responseStatus } : {}),
+      }));
+    }
 
     const patch: Record<string, unknown> = {};
     if (updates.summary) patch['summary'] = updates.summary;

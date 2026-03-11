@@ -264,10 +264,15 @@ export function registerEditSubmit(app: App): void {
       const fullAttendees = [...new Set([...newPersonAttendees, newRoomId, organizerEmail, env.google.adminEmail])]
         .filter(Boolean);
 
+      // 회의실 변경 시 summary의 [RoomName] 접두어 업데이트
+      const newRoom = getRoomById(newRoomId);
+      const titleWithoutPrefix = newSummary.replace(/^\[.*?\]\s*/, '');
+      const finalSummary = newRoom ? `[${newRoom.name}] ${titleWithoutPrefix}` : titleWithoutPrefix;
+
       // changes 구성
       const changes: BookingChanges = {};
-      if (oldBooking.summary !== newSummary) {
-        changes.summary = { before: oldBooking.summary, after: newSummary };
+      if (oldBooking.summary !== finalSummary) {
+        changes.summary = { before: oldBooking.summary, after: finalSummary };
       }
       if (oldBooking.startTime.getTime() !== newStartTime.getTime()) {
         changes.startTime = { before: oldBooking.startTime, after: newStartTime };
@@ -277,7 +282,6 @@ export function registerEditSubmit(app: App): void {
       }
       if (oldRoomId !== newRoomId) {
         const oldRoom = getRoomById(oldRoomId);
-        const newRoom = getRoomById(newRoomId);
         changes.room = { before: oldRoom?.name ?? '', after: newRoom?.name ?? '' };
       }
       const oldPersonAttendees = oldBooking.attendees
@@ -290,7 +294,7 @@ export function registerEditSubmit(app: App): void {
 
       // user의 primary calendar에서 직접 수정
       await updateBooking(eventId, newRoomId, {
-        summary: newSummary,
+        summary: finalSummary,
         startTime: newStartTime,
         endTime: newEndTime,
         attendees: fullAttendees,
