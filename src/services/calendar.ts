@@ -270,6 +270,57 @@ function getRoomCalendarClient() {
 }
 
 /**
+ * 미팅룸 시간대 충돌 검사
+ * FreeBusy API로 해당 시간에 다른 예약이 있는지 확인
+ * 같은 회의실에서 시간만 변경 시 자기 자신의 예약은 제외
+ * @param roomId - 확인할 회의실 ID
+ * @param startTime - 새로운 시작 시간
+ * @param endTime - 새로운 종료 시간
+ * @param oldStartTime - 기존 시작 시간 (같은 회의실에서 시간 변경 시)
+ * @param oldEndTime - 기존 종료 시간 (같은 회의실에서 시간 변경 시)
+ */
+async function checkRoomConflict(
+  roomId: string,
+  startTime: Date,
+  endTime: Date,
+  oldStartTime?: Date,
+  oldEndTime?: Date,
+): Promise<void> {
+  const calendar = getRoomCalendarClient();
+
+  const freeBusyResponse = await calendar.freebusy.query({
+    requestBody: {
+      timeMin: startTime.toISOString(),
+      timeMax: endTime.toISOString(),
+      timeZone: env.google.timezone,
+      items: [{ id: roomId }],
+    },
+  });
+
+  const busySlots = freeBusyResponse.data.calendars?.[roomId]?.busy ?? [];
+  if (busySlots.length === 0) return;
+
+  // 회의실 변경 시 (oldStartTime 미제공): 어떤 busy든 충돌
+  if (!oldStartTime || !oldEndTime) {
+    const room = ROOMS.find(r => r.id === roomId);
+    throw new Error(`😔 ${room?.name ?? '선택한 회의실'}은(는) 해당 시간대에 이미 예약되어 있습니다.`);
+  }
+
+  // 같은 회의실에서 시간 변경 시: 자기 자신의 예약(old time) 범위를 벗어나는 busy가 있으면 충돌
+  const hasRealConflict = busySlots.some(slot => {
+    const slotStart = new Date(slot.start!).getTime();
+    const slotEnd = new Date(slot.end!).getTime();
+    // busy 구간이 기존 예약 시간 범위 밖으로 확장되면 다른 예약과 충돌
+    return slotStart < oldStartTime.getTime() || slotEnd > oldEndTime.getTime();
+  });
+
+  if (hasRealConflict) {
+    const room = ROOMS.find(r => r.id === roomId);
+    throw new Error(`😔 ${room?.name ?? '선택한 회의실'}은(는) 해당 시간대에 이미 예약되어 있습니다.`);
+  }
+}
+
+/**
  * DWD 인증 실패 시 admin으로 자동 fallback
  * 외부 도메인 사용자(예: @filamentree.com)도 정상 처리
  */
@@ -467,7 +518,8 @@ export async function getUserEvent(userEmail: string, eventId: string): Promise<
 
 /**
  * 예약 수정
- * GET → merge → PATCH 패턴으로 기존 참석자 유지
+ * withRoomLock으로 race condition 방지
+ * FreeBusy 충돌 검사 후 GET → merge → PATCH
  * 회의실 리소스에 resource: true 플래그 보존 (중복예약 방지)
  * DWD 인증 실패 시 admin fallback
  * 정기회의 개별 인스턴스 수정 허용
@@ -478,65 +530,95 @@ export async function updateBooking(
   updates: { summary?: string; startTime?: Date; endTime?: Date; attendees?: string[] },
   organizerEmail?: string,
 ): Promise<void> {
-  const doUpdate = async (calendar: ReturnType<typeof getCalendarClientForUser>, calendarId: string) => {
-    const existing = await calendar.events.get({ calendarId, eventId });
+  return withRoomLock(roomId, async () => {
+    const doUpdate = async (calendar: ReturnType<typeof getCalendarClientForUser>, calendarId: string) => {
+      const existing = await calendar.events.get({ calendarId, eventId });
 
-    const startTime = updates.startTime ?? new Date(existing.data.start?.dateTime ?? '');
-    if (startTime.getTime() < Date.now()) {
-      throw new Error('이미 지난 예약은 수정할 수 없습니다.');
-    }
+      const oldStart = new Date(existing.data.start?.dateTime ?? '');
+      const oldEnd = new Date(existing.data.end?.dateTime ?? '');
+      const newStart = updates.startTime ?? oldStart;
+      const newEnd = updates.endTime ?? oldEnd;
 
-    // 참석자 병합: 회의실 리소스에 resource: true 플래그 보존
-    const existingAttendees = existing.data.attendees ?? [];
-    const newAttendeeEmails = updates.attendees ?? [];
-    let mergedAttendees: Array<{ email: string; resource?: boolean; responseStatus?: string }>;
+      if (newStart.getTime() < Date.now()) {
+        throw new Error('이미 지난 예약은 수정할 수 없습니다.');
+      }
 
-    if (newAttendeeEmails.length > 0) {
-      mergedAttendees = newAttendeeEmails.map(email => {
-        if (email.endsWith('@resource.calendar.google.com')) {
-          return { email, resource: true };
-        }
-        // 기존 참석자의 responseStatus 보존 (accepted 등)
-        const prev = existingAttendees.find(a => a.email === email);
-        if (prev?.responseStatus) {
-          return { email, responseStatus: prev.responseStatus };
-        }
-        return { email };
+      // 회의실 변경 감지
+      const oldRoomAttendee = (existing.data.attendees ?? []).find(
+        a => a.email?.endsWith('@resource.calendar.google.com'),
+      );
+      const oldRoomId = oldRoomAttendee?.email ?? '';
+      const targetRoomId = updates.attendees?.find(
+        e => e.endsWith('@resource.calendar.google.com'),
+      ) ?? roomId;
+      const roomChanged = oldRoomId !== '' && oldRoomId !== targetRoomId;
+      const timeChanged = newStart.getTime() !== oldStart.getTime() || newEnd.getTime() !== oldEnd.getTime();
+
+      // 시간 또는 회의실 변경 시 FreeBusy 충돌 검사
+      if (roomChanged || timeChanged) {
+        await checkRoomConflict(
+          targetRoomId,
+          newStart,
+          newEnd,
+          // 같은 회의실에서 시간만 변경 시 자기 자신 제외를 위해 기존 시간 전달
+          roomChanged ? undefined : oldStart,
+          roomChanged ? undefined : oldEnd,
+        );
+      }
+
+      // 참석자 병합: 회의실 리소스에 resource: true 플래그 보존
+      const existingAttendees = existing.data.attendees ?? [];
+      const newAttendeeEmails = updates.attendees ?? [];
+      let mergedAttendees: Array<{ email: string; resource?: boolean; responseStatus?: string }>;
+
+      if (newAttendeeEmails.length > 0) {
+        mergedAttendees = newAttendeeEmails.map(email => {
+          if (email.endsWith('@resource.calendar.google.com')) {
+            return { email, resource: true };
+          }
+          // 기존 참석자의 responseStatus 보존 (accepted 등)
+          const prev = existingAttendees.find(a => a.email === email);
+          if (prev?.responseStatus) {
+            return { email, responseStatus: prev.responseStatus };
+          }
+          return { email };
+        });
+      } else {
+        mergedAttendees = existingAttendees.map(a => ({
+          email: a.email ?? '',
+          ...(a.resource ? { resource: true } : {}),
+          ...(a.responseStatus ? { responseStatus: a.responseStatus } : {}),
+        }));
+      }
+
+      const patch: Record<string, unknown> = {};
+      if (updates.summary) patch['summary'] = updates.summary;
+      if (updates.startTime) patch['start'] = { dateTime: updates.startTime.toISOString(), timeZone: env.google.timezone };
+      if (updates.endTime) patch['end'] = { dateTime: updates.endTime.toISOString(), timeZone: env.google.timezone };
+      if (newAttendeeEmails.length > 0) patch['attendees'] = mergedAttendees;
+
+      await calendar.events.patch({
+        calendarId,
+        eventId,
+        sendUpdates: 'all',
+        requestBody: patch,
+      });
+    };
+
+    if (organizerEmail) {
+      await withCalendarFallback(organizerEmail, async (calendar) => {
+        await doUpdate(calendar, 'primary');
       });
     } else {
-      mergedAttendees = existingAttendees.map(a => ({
-        email: a.email ?? '',
-        ...(a.resource ? { resource: true } : {}),
-        ...(a.responseStatus ? { responseStatus: a.responseStatus } : {}),
-      }));
+      const calendar = getRoomCalendarClient();
+      await doUpdate(calendar, roomId);
     }
-
-    const patch: Record<string, unknown> = {};
-    if (updates.summary) patch['summary'] = updates.summary;
-    if (updates.startTime) patch['start'] = { dateTime: updates.startTime.toISOString(), timeZone: env.google.timezone };
-    if (updates.endTime) patch['end'] = { dateTime: updates.endTime.toISOString(), timeZone: env.google.timezone };
-    if (newAttendeeEmails.length > 0) patch['attendees'] = mergedAttendees;
-
-    await calendar.events.patch({
-      calendarId,
-      eventId,
-      sendUpdates: 'all',
-      requestBody: patch,
-    });
-  };
-
-  if (organizerEmail) {
-    await withCalendarFallback(organizerEmail, async (calendar) => {
-      await doUpdate(calendar, 'primary');
-    });
-  } else {
-    const calendar = getRoomCalendarClient();
-    await doUpdate(calendar, roomId);
-  }
+  });
 }
 
 /**
  * 정기회의 전체 시리즈 시간 수정
+ * withRoomLock으로 race condition 방지
  * 마스터 이벤트의 start/end를 패치하여 모든 인스턴스에 일괄 적용
  * DWD 인증 실패 시 admin fallback
  */
@@ -555,15 +637,29 @@ export async function updateRecurringSeries(
       throw new Error('이 이벤트는 정기회의가 아닙니다.');
     }
 
-    await calendar.events.patch({
-      calendarId: 'primary',
-      eventId: masterEventId,
-      sendUpdates: 'all',
-      requestBody: {
-        start: { dateTime: updates.startTime.toISOString(), timeZone: env.google.timezone },
-        end: { dateTime: updates.endTime.toISOString(), timeZone: env.google.timezone },
-      },
-    });
+    // 회의실 ID 추출하여 lock 적용
+    const roomAttendee = (existing.data.attendees ?? []).find(
+      a => a.email?.endsWith('@resource.calendar.google.com'),
+    );
+    const roomId = roomAttendee?.email ?? '';
+
+    const doPatch = async () => {
+      await calendar.events.patch({
+        calendarId: 'primary',
+        eventId: masterEventId,
+        sendUpdates: 'all',
+        requestBody: {
+          start: { dateTime: updates.startTime.toISOString(), timeZone: env.google.timezone },
+          end: { dateTime: updates.endTime.toISOString(), timeZone: env.google.timezone },
+        },
+      });
+    };
+
+    if (roomId) {
+      await withRoomLock(roomId, doPatch);
+    } else {
+      await doPatch();
+    }
   });
 }
 
