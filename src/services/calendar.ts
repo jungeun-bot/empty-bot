@@ -130,9 +130,10 @@ export async function createBooking(request: BookingRequest): Promise<string> {
     try {
       eventResponse = await userCalendar.events.insert(insertParams);
     } catch (insertError) {
+      // DWD 인증 실패 시 admin으로 fallback (unauthorized_client, invalid_grant, access_denied 등)
       const errMsg = insertError instanceof Error ? insertError.message : String(insertError);
-      if (errMsg.includes('unauthorized_client')) {
-        console.warn(`⚠️ DWD 인증 실패 (${effectiveOrganizer}), admin(${env.google.adminEmail})으로 재시도`);
+      if (errMsg.includes('unauthorized_client') || errMsg.includes('invalid_grant') || errMsg.includes('access_denied') || errMsg.includes('Not Authorized')) {
+        console.warn(`\u26a0\ufe0f DWD \uc778\uc99d \uc2e4\ud328 (${effectiveOrganizer}), admin(${env.google.adminEmail})\uc73c\ub85c \uc7ac\uc2dc\ub3c4`);
         userCalendar = getCalendarClientForUser(env.google.adminEmail);
         eventResponse = await userCalendar.events.insert(insertParams);
       } else {
@@ -280,9 +281,10 @@ async function withCalendarFallback<T>(
     const calendar = getCalendarClientForUser(userEmail);
     return await operation(calendar, false);
   } catch (error) {
+    // DWD 인증 실패 시 admin으로 fallback (unauthorized_client, invalid_grant, access_denied 등)
     const errMsg = error instanceof Error ? error.message : String(error);
-    if (errMsg.includes('unauthorized_client')) {
-      console.warn(`⚠️ DWD 인증 실패 (${userEmail}), admin(${env.google.adminEmail})으로 재시도`);
+    if (errMsg.includes('unauthorized_client') || errMsg.includes('invalid_grant') || errMsg.includes('access_denied') || errMsg.includes('Not Authorized')) {
+      console.warn(`\u26a0\ufe0f DWD \uc778\uc99d \uc2e4\ud328 (${userEmail}), admin(${env.google.adminEmail})\uc73c\ub85c \uc7ac\uc2dc\ub3c4`);
       const calendar = getCalendarClientForUser(env.google.adminEmail);
       return await operation(calendar, true);
     }
