@@ -50,10 +50,25 @@ export function parseDateTimeString(dateStr: string, timeStr: string): Date {
  */
 export function validateTimeInput(input: string): string | null {
   const trimmed = input.trim();
-  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) return null;
-  const hours = parseInt(match[1], 10);
-  const minutes = parseInt(match[2], 10);
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+
+  // HH:MM 또는 H:MM 형식
+  const colonMatch = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  if (colonMatch) {
+    const hours = parseInt(colonMatch[1], 10);
+    const minutes = parseInt(colonMatch[2], 10);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  }
+
+  // 숫자만 입력: 3~4자리 (예: 930 → 09:30, 1600 → 16:00)
+  const digitMatch = trimmed.match(/^(\d{3,4})$/);
+  if (digitMatch) {
+    const digits = digitMatch[1];
+    const minutes = parseInt(digits.slice(-2), 10);
+    const hours = parseInt(digits.slice(0, -2), 10);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  }
+
+  return null;
 }
