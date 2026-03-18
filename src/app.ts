@@ -17,8 +17,6 @@ const app = new App({
 registerListeners(app);
 
 // Render 무료 티어용 헬스체크 HTTP 서버
-// - Render가 이 포트로 앱 상태를 확인함
-// - UptimeRobot이 14분마다 핑을 보내 잠들지 않게 유지
 const PORT = process.env.PORT || 3000;
 
 const server = http.createServer((_req, res) => {
@@ -29,6 +27,17 @@ const server = http.createServer((_req, res) => {
 server.listen(PORT, () => {
   console.log(`🌐 헬스체크 서버 실행 중 (포트: ${PORT})`);
 });
+
+// 셀프 핑: Render 슬립 방지 (10분 간격)
+// Render가 자동 제공하는 RENDER_EXTERNAL_URL 사용, 프로덕션에서만 동작
+const SELF_URL = process.env['RENDER_EXTERNAL_URL'];
+if (SELF_URL) {
+  const PING_INTERVAL = 10 * 60 * 1000; // 10분
+  setInterval(() => {
+    fetch(`${SELF_URL}/health`).catch(() => {});
+  }, PING_INTERVAL);
+  console.log(`🏓 셀프 핑 활성화 (${SELF_URL}/health, 10분 간격)`);
+}
 
 app.start().then(() => {
   console.log('⚡ Slack 미팅룸 예약봇이 시작되었습니다!');
