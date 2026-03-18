@@ -346,6 +346,101 @@
                     "name": "message"
                 }
             }
+        },
+        "open_book_form": {
+            "title": "예약하기 폼 열기",
+            "description": "회의실 예약 폼을 엽니다 (워크플로 빌더 연동)",
+            "input_parameters": {
+                "interactivity": {
+                    "type": "slack#/types/interactivity",
+                    "title": "Interactivity",
+                    "is_required": true
+                }
+            },
+            "output_parameters": {
+                "opened": {
+                    "type": "boolean",
+                    "title": "열기 성공",
+                    "is_required": true,
+                    "name": "opened"
+                }
+            }
+        },
+        "open_edit_form": {
+            "title": "수정/취소 폼 열기",
+            "description": "예약 수정/취소 폼을 엽니다 (워크플로 빌더 연동)",
+            "input_parameters": {
+                "interactivity": {
+                    "type": "slack#/types/interactivity",
+                    "title": "Interactivity",
+                    "is_required": true
+                }
+            },
+            "output_parameters": {
+                "opened": {
+                    "type": "boolean",
+                    "title": "열기 성공",
+                    "is_required": true,
+                    "name": "opened"
+                }
+            }
+        },
+        "open_report_form": {
+            "title": "신고/건의 폼 열기",
+            "description": "신고/건의 폼을 엽니다 (워크플로 빌더 연동)",
+            "input_parameters": {
+                "interactivity": {
+                    "type": "slack#/types/interactivity",
+                    "title": "Interactivity",
+                    "is_required": true
+                }
+            },
+            "output_parameters": {
+                "opened": {
+                    "type": "boolean",
+                    "title": "열기 성공",
+                    "is_required": true,
+                    "name": "opened"
+                }
+            }
+        },
+        "open_recurring_form": {
+            "title": "정기회의 폼 열기",
+            "description": "정기회의 예약 폼을 엽니다 (워크플로 빌더 연동)",
+            "input_parameters": {
+                "interactivity": {
+                    "type": "slack#/types/interactivity",
+                    "title": "Interactivity",
+                    "is_required": true
+                }
+            },
+            "output_parameters": {
+                "opened": {
+                    "type": "boolean",
+                    "title": "열기 성공",
+                    "is_required": true,
+                    "name": "opened"
+                }
+            }
+        },
+        "open_status_form": {
+            "title": "현황 보기",
+            "description": "회의실 현황 폼을 엽니다 (워크플로 빌더 연동)",
+            "input_parameters": {
+                "interactivity": {
+                    "type": "slack#/types/interactivity",
+                    "title": "Interactivity",
+                    "is_required": true
+                }
+            },
+            "output_parameters": {
+                "opened": {
+                    "type": "boolean",
+                    "title": "열기 성공",
+                    "is_required": true,
+                    "name": "opened"
+                }
+            }
         }
     }
 }
