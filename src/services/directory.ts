@@ -111,7 +111,7 @@ export async function searchUsersViaSlack(
     .filter((user) =>
       user.name.toLowerCase().includes(lowerQuery) ||
       user.email.toLowerCase().includes(lowerQuery) ||
-      (user.displayName?.toLowerCase().includes(lowerQuery) ?? false),
+      (user.searchText?.toLowerCase().includes(lowerQuery) ?? false),
     )
     .slice(0, 10);
 }
@@ -136,10 +136,21 @@ async function fetchAllSlackUsers(client: WebClient): Promise<UserSearchResult[]
       if (member.is_bot || member.deleted || member.id === 'USLACKBOT') continue;
       if (!member.profile?.email) continue;
 
+      // 검색 가능한 모든 이름 필드를 합쳐서 저장
+      const nameParts = [
+        member.profile.real_name,
+        member.profile.display_name,
+        member.profile.first_name,
+        member.profile.last_name,
+        member.profile.title,
+        member.name,
+      ].filter(Boolean);
+
       results.push({
         name: member.profile.real_name ?? member.name ?? '',
         email: member.profile.email,
         displayName: member.profile.display_name || undefined,
+        searchText: nameParts.join(' '),
         photoUrl: member.profile.image_48 ?? undefined,
       });
     }

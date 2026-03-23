@@ -29,6 +29,7 @@ export interface UserSearchResult {
   name: string;
   email: string;
   displayName?: string;  // Slack 표시 이름 (부서/직급 등 포함)
+  searchText?: string;   // 검색용 통합 텍스트 (real_name + display_name + title 등)
   photoUrl?: string;
 }
 
