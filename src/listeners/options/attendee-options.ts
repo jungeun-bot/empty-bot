@@ -51,7 +51,7 @@ export function registerAttendeeOptions(app: App): void {
 
         for (const user of users.slice(0, maxUsers)) {
           results.push({
-            text: { type: 'plain_text' as const, text: user.name, emoji: false },
+            text: { type: 'plain_text' as const, text: user.displayName || user.name, emoji: false },
             value: user.email,
           });
         }

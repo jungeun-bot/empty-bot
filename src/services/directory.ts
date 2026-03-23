@@ -110,7 +110,8 @@ export async function searchUsersViaSlack(
   return slackUserCache.users
     .filter((user) =>
       user.name.toLowerCase().includes(lowerQuery) ||
-      user.email.toLowerCase().includes(lowerQuery),
+      user.email.toLowerCase().includes(lowerQuery) ||
+      (user.displayName?.toLowerCase().includes(lowerQuery) ?? false),
     )
     .slice(0, 10);
 }
@@ -138,6 +139,7 @@ async function fetchAllSlackUsers(client: WebClient): Promise<UserSearchResult[]
       results.push({
         name: member.profile.real_name ?? member.name ?? '',
         email: member.profile.email,
+        displayName: member.profile.display_name || undefined,
         photoUrl: member.profile.image_48 ?? undefined,
       });
     }

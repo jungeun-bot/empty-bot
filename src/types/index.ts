@@ -28,6 +28,7 @@ export interface Attendee {
 export interface UserSearchResult {
   name: string;
   email: string;
+  displayName?: string;  // Slack 표시 이름 (부서/직급 등 포함)
   photoUrl?: string;
 }
 
