@@ -22,26 +22,35 @@ export async function searchUsers(
 ): Promise<UserSearchResult[]> {
   if (query.length < 2) return [];
 
-  // Slack 검색 우선 (도메인 무관, 모든 사용자 커버)
-  if (slackClient) {
-    try {
-      const slackResults = await searchUsersViaSlack(query, slackClient);
-      if (slackResults.length > 0) return slackResults;
-    } catch (error) {
-      console.warn('Slack 사용자 검색 실패, Google Directory로 폴백:', error instanceof Error ? error.message : String(error));
+  // Slack + Google Directory 병렬 검색 후 병합
+  const [slackResults, googleResults] = await Promise.all([
+    slackClient
+      ? searchUsersViaSlack(query, slackClient).catch((error) => {
+          console.warn('Slack 사용자 검색 실패:', error instanceof Error ? error.message : String(error));
+          return [] as UserSearchResult[];
+        })
+      : Promise.resolve([] as UserSearchResult[]),
+    searchUsersViaGoogle(query).catch((error: unknown) => {
+      const gaxErr = error as { response?: { data?: unknown }; code?: number; message?: string };
+      const detail = gaxErr.response?.data ?? gaxErr.message ?? String(error);
+      console.warn('Google Directory API 검색 실패:', JSON.stringify(detail));
+      return [] as UserSearchResult[];
+    }),
+  ]);
+
+  // 이메일 기준으로 중복 제거 (Slack 결과 우선)
+  const seen = new Set<string>();
+  const merged: UserSearchResult[] = [];
+
+  for (const user of [...slackResults, ...googleResults]) {
+    const key = user.email.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      merged.push(user);
     }
   }
 
-  // Google Directory API 폴백
-  try {
-    return await searchUsersViaGoogle(query);
-  } catch (error: unknown) {
-    const gaxErr = error as { response?: { data?: unknown }; code?: number; message?: string };
-    const detail = gaxErr.response?.data ?? gaxErr.message ?? String(error);
-    console.warn('Google Directory API 검색도 실패:', JSON.stringify(detail));
-  }
-
-  return [];
+  return merged;
 }
 
 /**
