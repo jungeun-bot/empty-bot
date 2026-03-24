@@ -38,11 +38,29 @@ export async function searchUsers(
     }),
   ]);
 
+  // 이메일 없는 Slack 사용자 → Google Directory에서 이름으로 이메일 보완
+  const resolvedSlack: UserSearchResult[] = [];
+  for (const user of slackResults) {
+    if (user.email) {
+      resolvedSlack.push(user);
+    } else {
+      // 이름으로 Google Directory 검색하여 이메일 찾기
+      try {
+        const googleMatch = await searchUsersViaGoogle(user.name);
+        if (googleMatch.length > 0) {
+          resolvedSlack.push({ ...user, email: googleMatch[0].email });
+        }
+      } catch {
+        // Google 검색 실패 시 스킵
+      }
+    }
+  }
+
   // 이메일 기준으로 중복 제거 (Slack 결과 우선)
   const seen = new Set<string>();
   const merged: UserSearchResult[] = [];
 
-  for (const user of [...slackResults, ...googleResults]) {
+  for (const user of [...resolvedSlack, ...googleResults]) {
     const key = user.email.toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
@@ -134,7 +152,7 @@ async function fetchAllSlackUsers(client: WebClient): Promise<UserSearchResult[]
     for (const member of members) {
       // 봇, 삭제된 사용자, Slackbot 제외
       if (member.is_bot || member.deleted || member.id === 'USLACKBOT') continue;
-      if (!member.profile?.email) continue;
+      if (!member.profile) continue;
 
       // 검색 가능한 모든 이름 필드를 합쳐서 저장
       const nameParts = [
@@ -148,7 +166,7 @@ async function fetchAllSlackUsers(client: WebClient): Promise<UserSearchResult[]
 
       results.push({
         name: member.profile.real_name ?? member.name ?? '',
-        email: member.profile.email,
+        email: member.profile.email ?? '',
         displayName: member.profile.display_name || undefined,
         searchText: nameParts.join(' '),
         photoUrl: member.profile.image_48 ?? undefined,
