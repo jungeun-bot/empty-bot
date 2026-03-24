@@ -7,7 +7,7 @@ const latestQueryByUser = new Map<string, string>();
 export function registerAttendeeOptions(app: App): void {
   app.options('attendees_input', async ({ ack, options, client, body }) => {
     const userId = body.user.id;
-    const query = options.value ?? '';
+    const query = (options.value ?? '').normalize('NFC');
     const lowerQuery = query.toLowerCase();
 
     // 이 사용자의 최신 쿼리로 등록

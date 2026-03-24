@@ -123,13 +123,13 @@ export async function searchUsersViaSlack(
     slackUserCache = { users: allUsers, fetchedAt: now };
   }
 
-  const lowerQuery = query.toLowerCase();
+  const lowerQuery = query.normalize('NFC').toLowerCase();
 
   return slackUserCache.users
     .filter((user) =>
-      user.name.toLowerCase().includes(lowerQuery) ||
+      user.name.normalize('NFC').toLowerCase().includes(lowerQuery) ||
       user.email.toLowerCase().includes(lowerQuery) ||
-      (user.searchText?.toLowerCase().includes(lowerQuery) ?? false),
+      (user.searchText?.normalize('NFC').toLowerCase().includes(lowerQuery) ?? false),
     )
     .slice(0, 10);
 }
