@@ -154,6 +154,23 @@ async function fetchAllSlackUsers(client: WebClient): Promise<UserSearchResult[]
       if (member.is_bot || member.deleted || member.id === 'USLACKBOT') continue;
       if (!member.profile) continue;
 
+      // [DEBUG] 김재근 프로필 전체 로그 — 원인 파악 후 제거
+      const allText = JSON.stringify(member.profile);
+      if (allText.includes('김재근') || allText.includes('Jack')) {
+        console.log(`🔍 [DEBUG] 김재근 프로필:`, JSON.stringify({
+          id: member.id,
+          name: member.name,
+          real_name: member.profile.real_name,
+          display_name: member.profile.display_name,
+          display_name_normalized: member.profile.display_name_normalized,
+          first_name: member.profile.first_name,
+          last_name: member.profile.last_name,
+          title: member.profile.title,
+          email: member.profile.email,
+          status_text: member.profile.status_text,
+        }, null, 2));
+      }
+
       // 검색 가능한 모든 이름 필드를 합쳐서 저장
       const nameParts = [
         member.profile.real_name,
