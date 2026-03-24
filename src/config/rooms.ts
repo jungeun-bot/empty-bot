@@ -26,24 +26,6 @@ const DEFAULT_ROOMS: Room[] = [
     type: 'meeting',
   },
   {
-    id: 'c_1888kjr830138h6cjit5a9c5qdph0@resource.calendar.google.com',
-    name: 'Focus 3',
-    capacity: 1,
-    type: 'focus',
-  },
-  {
-    id: 'c_188bo3q7b3a0ugfml101uo54v34ru@resource.calendar.google.com',
-    name: 'Focus 4',
-    capacity: 1,
-    type: 'focus',
-  },
-  {
-    id: 'c_1884kiuvauqv6j7en9de4f9gdoeqi@resource.calendar.google.com',
-    name: 'Focus 5',
-    capacity: 1,
-    type: 'focus',
-  },
-  {
     id: 'c_188e6vgnvhpl6jpgina2gtpnkjuru@resource.calendar.google.com',
     name: 'Focus 6',
     capacity: 1,
