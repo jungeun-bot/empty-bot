@@ -205,3 +205,40 @@ export async function warmUpSlackUserCache(client: WebClient): Promise<void> {
   slackUserCache = { users: allUsers, fetchedAt: Date.now() };
   console.log(`📋 Slack 사용자 캐시 사전 로드 완료: ${allUsers.length}명`);
 }
+
+/**
+ * [DEBUG] 캐시에서 검색어 매칭 결과 + 원본 데이터 반환 — 원인 파악 후 제거
+ */
+export async function debugSearchUser(query: string, client: WebClient) {
+  // 캐시가 없으면 로드
+  if (!slackUserCache) {
+    const allUsers = await fetchAllSlackUsers(client);
+    slackUserCache = { users: allUsers, fetchedAt: Date.now() };
+  }
+
+  const lowerQuery = query.normalize('NFC').toLowerCase();
+
+  // 캐시에서 매칭되는 사용자
+  const matched = slackUserCache.users
+    .filter((user) =>
+      user.name.normalize('NFC').toLowerCase().includes(lowerQuery) ||
+      user.email.toLowerCase().includes(lowerQuery) ||
+      (user.searchText?.normalize('NFC').toLowerCase().includes(lowerQuery) ?? false),
+    )
+    .slice(0, 20);
+
+  // 전체 캐시에서 "김재근" 포함 사용자의 상세 데이터
+  const jackUsers = slackUserCache.users.filter((u) =>
+    u.name.includes('김재근') || u.searchText?.includes('김재근') ||
+    u.name.includes('Jack') || u.searchText?.includes('Jack'),
+  );
+
+  return {
+    query,
+    normalizedQuery: lowerQuery,
+    cacheSize: slackUserCache.users.length,
+    matchedCount: matched.length,
+    matched: matched.map((u) => ({ name: u.name, email: u.email, displayName: u.displayName, searchText: u.searchText })),
+    jackUsers: jackUsers.map((u) => ({ name: u.name, email: u.email, displayName: u.displayName, searchText: u.searchText })),
+  };
+}

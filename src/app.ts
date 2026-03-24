@@ -3,7 +3,7 @@ import http from 'node:http';
 import { App, LogLevel } from '@slack/bolt';
 import { env } from './config/env.js';
 import { registerListeners } from './listeners/index.js';
-import { warmUpSlackUserCache } from './services/directory.js';
+import { warmUpSlackUserCache, debugSearchUser } from './services/directory.js';
 import { startNotificationScheduler } from './services/notification-scheduler.js';
 
 const app = new App({
@@ -19,7 +19,23 @@ registerListeners(app);
 // Render 무료 티어용 헬스체크 HTTP 서버
 const PORT = process.env.PORT || 3000;
 
-const server = http.createServer((_req, res) => {
+const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
+
+  // [DEBUG] /debug-search?q=검색어 — 원인 파악 후 제거
+  if (url.pathname === '/debug-search') {
+    const q = url.searchParams.get('q') ?? '';
+    try {
+      const result = await debugSearchUser(q, app.client);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(result, null, 2));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end(String(err));
+    }
+    return;
+  }
+
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('OK');
 });
