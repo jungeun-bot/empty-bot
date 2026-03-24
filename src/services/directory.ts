@@ -131,7 +131,7 @@ export async function searchUsersViaSlack(
       user.email.toLowerCase().includes(lowerQuery) ||
       (user.searchText?.normalize('NFC').toLowerCase().includes(lowerQuery) ?? false),
     )
-    .slice(0, 10);
+    .slice(0, 30);
 }
 
 /**
