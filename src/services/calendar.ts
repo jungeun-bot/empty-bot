@@ -539,10 +539,6 @@ export async function updateBooking(
       const newStart = updates.startTime ?? oldStart;
       const newEnd = updates.endTime ?? oldEnd;
 
-      if (newStart.getTime() < Date.now()) {
-        throw new Error('이미 지난 예약은 수정할 수 없습니다.');
-      }
-
       // 회의실 변경 감지
       const oldRoomAttendee = (existing.data.attendees ?? []).find(
         a => a.email?.endsWith('@resource.calendar.google.com'),
