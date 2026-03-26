@@ -549,6 +549,12 @@ export async function updateBooking(
       ) ?? roomId;
       const roomChanged = oldRoomId !== '' && oldRoomId !== targetRoomId;
       const timeChanged = newStart.getTime() !== oldStart.getTime() || newEnd.getTime() !== oldEnd.getTime();
+      const isPast = oldStart.getTime() < Date.now();
+
+      // 과거 예약은 시간/회의실 변경 불가 (FreeBusy API가 과거 시간대를 정확히 반환하지 않아 중복 예약 위험)
+      if (isPast && (roomChanged || timeChanged)) {
+        throw new Error('이미 지난 예약은 제목·참석자만 수정할 수 있습니다. 시간/회의실 변경은 불가합니다.');
+      }
 
       // 시간 또는 회의실 변경 시 FreeBusy 충돌 검사
       if (roomChanged || timeChanged) {
