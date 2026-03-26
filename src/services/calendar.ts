@@ -551,21 +551,32 @@ export async function updateBooking(
       const timeChanged = newStart.getTime() !== oldStart.getTime() || newEnd.getTime() !== oldEnd.getTime();
       const isPast = oldStart.getTime() < Date.now();
 
-      // 과거 예약은 시간/회의실 변경 불가 (FreeBusy API가 과거 시간대를 정확히 반환하지 않아 중복 예약 위험)
-      if (isPast && (roomChanged || timeChanged)) {
-        throw new Error('이미 지난 예약은 제목·참석자만 수정할 수 있습니다. 시간/회의실 변경은 불가합니다.');
-      }
-
-      // 시간 또는 회의실 변경 시 FreeBusy 충돌 검사
+      // 시간 또는 회의실 변경 시 충돌 검사
       if (roomChanged || timeChanged) {
-        await checkRoomConflict(
-          targetRoomId,
-          newStart,
-          newEnd,
-          // 같은 회의실에서 시간만 변경 시 자기 자신 제외를 위해 기존 시간 전달
-          roomChanged ? undefined : oldStart,
-          roomChanged ? undefined : oldEnd,
-        );
+        if (isPast) {
+          // 과거 예약: FreeBusy API가 과거 시간대를 정확히 반환하지 않으므로 events.list로 직접 충돌 검사
+          const cal = getRoomCalendarClient();
+          const resp = await cal.events.list({
+            calendarId: targetRoomId,
+            timeMin: newStart.toISOString(),
+            timeMax: newEnd.toISOString(),
+            singleEvents: true,
+          });
+          const conflicts = (resp.data.items ?? []).filter(e => e.id !== eventId);
+          if (conflicts.length > 0) {
+            const room = ROOMS.find(r => r.id === targetRoomId);
+            throw new Error(`😔 ${room?.name ?? '선택한 회의실'}은(는) 해당 시간대에 이미 예약되어 있습니다.`);
+          }
+        } else {
+          await checkRoomConflict(
+            targetRoomId,
+            newStart,
+            newEnd,
+            // 같은 회의실에서 시간만 변경 시 자기 자신 제외를 위해 기존 시간 전달
+            roomChanged ? undefined : oldStart,
+            roomChanged ? undefined : oldEnd,
+          );
+        }
       }
 
       // 참석자 병합: 회의실 리소스에 resource: true 플래그 보존
