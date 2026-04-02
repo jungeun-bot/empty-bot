@@ -68,8 +68,10 @@ jobs:
 
       - name: Generate .env file
         shell: powershell
+        env:
+          ACTION_SECRET: ${{ secrets.ACTION_SECRET }}
         run: |
-          [System.IO.File]::WriteAllText(".env", "${{ secrets.ACTION_SECRET }}", [System.Text.UTF8Encoding]::new($false))
+          [System.IO.File]::WriteAllText(".env", $env:ACTION_SECRET, [System.Text.UTF8Encoding]::new($false))
 
       - name: Deploy with Docker Compose
         run: |
