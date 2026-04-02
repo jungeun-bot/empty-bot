@@ -40,6 +40,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: ./Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -64,6 +65,9 @@ jobs:
 
       - name: Pull latest image
         run: docker pull ghcr.io/${{ github.repository }}:latest
+
+      - name: Generate .env file
+        run: echo "${{ secrets.ACTION_SECRET }}" > .env
 
       - name: Deploy with Docker Compose
         run: |
