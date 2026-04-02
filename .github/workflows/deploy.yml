@@ -67,7 +67,9 @@ jobs:
         run: docker pull ghcr.io/${{ github.repository }}:latest
 
       - name: Generate .env file
-        run: echo "${{ secrets.ACTION_SECRET }}" > .env
+        shell: pwsh
+        run: |
+          [System.IO.File]::WriteAllText(".env", "${{ secrets.ACTION_SECRET }}", [System.Text.UTF8Encoding]::new($false))
 
       - name: Deploy with Docker Compose
         run: |
