@@ -67,7 +67,7 @@ jobs:
         run: docker pull ghcr.io/${{ github.repository }}:latest
 
       - name: Generate .env file
-        shell: pwsh
+        shell: powershell
         run: |
           [System.IO.File]::WriteAllText(".env", "${{ secrets.ACTION_SECRET }}", [System.Text.UTF8Encoding]::new($false))
 
