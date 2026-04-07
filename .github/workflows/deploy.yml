@@ -36,12 +36,16 @@ jobs:
             type=sha,prefix=sha-
             type=raw,value=latest
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -67,11 +71,10 @@ jobs:
         run: docker pull ghcr.io/${{ github.repository }}:latest
 
       - name: Generate .env file
-        shell: powershell
         env:
           ACTION_SECRET: ${{ secrets.ACTION_SECRET }}
         run: |
-          [System.IO.File]::WriteAllText(".env", $env:ACTION_SECRET, [System.Text.UTF8Encoding]::new($false))
+          printf '%s' "$ACTION_SECRET" > .env
 
       - name: Deploy with Docker Compose
         run: |
