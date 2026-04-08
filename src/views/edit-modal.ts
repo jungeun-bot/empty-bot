@@ -341,7 +341,7 @@ export function buildRecurringEditChoiceModal(booking: BookingEvent, channelId: 
               value: 'single',
             },
             {
-              text: { type: 'plain_text' as const, text: '🔁 전체 정기일정 시간 변경', emoji: true },
+              text: { type: 'plain_text' as const, text: '🔁 전체 정기일정 수정', emoji: true },
               value: 'all',
             },
           ],
@@ -352,7 +352,7 @@ export function buildRecurringEditChoiceModal(booking: BookingEvent, channelId: 
 }
 
 /**
- * 정기회의 전체 시간 변경 모달 (시간만 수정)
+ * 정기회의 전체 수정 모달 (이름, 회의실, 참석자, 시간 수정)
  */
 export function buildRecurringTimeEditModal(booking: BookingEvent, channelId: string) {
   const kstOffset = 9 * 60 * 60 * 1000;
@@ -360,6 +360,21 @@ export function buildRecurringTimeEditModal(booking: BookingEvent, channelId: st
   const endKst = new Date(booking.endTime.getTime() + kstOffset);
   const currentStartTime = `${String(startKst.getUTCHours()).padStart(2, '0')}:${String(startKst.getUTCMinutes()).padStart(2, '0')}`;
   const currentEndTime = `${String(endKst.getUTCHours()).padStart(2, '0')}:${String(endKst.getUTCMinutes()).padStart(2, '0')}`;
+
+  // 회의실 옵션
+  const roomOptions = ROOMS.map(r => ({
+    text: { type: 'plain_text' as const, text: `${r.name} (${r.capacity}인)`, emoji: false },
+    value: r.id,
+  }));
+  const currentRoomOption = roomOptions.find(o => o.value === booking.roomId) ?? roomOptions[0]!;
+
+  // 참석자 초기값 (리소스 캘린더 + 주최자 제외)
+  const attendeeInitialOptions = booking.attendees
+    .filter(email => !email.includes('@resource.calendar.google.com') && email !== booking.organizer)
+    .map(email => ({
+      text: { type: 'plain_text' as const, text: email, emoji: false },
+      value: email,
+    }));
 
   return {
     type: 'modal' as const,
@@ -369,15 +384,36 @@ export function buildRecurringTimeEditModal(booking: BookingEvent, channelId: st
       roomId: booking.roomId,
       channelId,
     }),
-    title: { type: 'plain_text' as const, text: '정기회의 시간 변경', emoji: true },
-    submit: { type: 'plain_text' as const, text: '전체 변경', emoji: true },
+    title: { type: 'plain_text' as const, text: '정기회의 전체 수정', emoji: true },
+    submit: { type: 'plain_text' as const, text: '전체 수정', emoji: true },
     close: { type: 'plain_text' as const, text: '취소', emoji: true },
     blocks: [
       {
         type: 'section' as const,
         text: {
           type: 'mrkdwn' as const,
-          text: `🔁 *${booking.summary}*\n모든 정기일정의 시간이 변경됩니다.`,
+          text: `🔁 *${booking.summary}*\n모든 정기일정이 수정됩니다.`,
+        },
+      },
+      {
+        type: 'input' as const,
+        block_id: 'title_block',
+        label: { type: 'plain_text' as const, text: '📝 회의 이름', emoji: true },
+        element: {
+          type: 'plain_text_input' as const,
+          action_id: 'title_input',
+          initial_value: booking.summary.replace(/^\[.*?\]\s*/, ''),
+        },
+      },
+      {
+        type: 'input' as const,
+        block_id: 'room_block',
+        label: { type: 'plain_text' as const, text: '🏢 회의실', emoji: true },
+        element: {
+          type: 'static_select' as const,
+          action_id: 'room_input',
+          options: roomOptions,
+          initial_option: currentRoomOption,
         },
       },
       {
@@ -400,6 +436,19 @@ export function buildRecurringTimeEditModal(booking: BookingEvent, channelId: st
           action_id: 'end_time_input',
           placeholder: { type: 'plain_text' as const, text: 'HH:MM (예: 17:00, 18:30)', emoji: false },
           initial_value: currentEndTime,
+        },
+      },
+      {
+        type: 'input' as const,
+        block_id: 'attendees_block',
+        optional: true,
+        label: { type: 'plain_text' as const, text: '👥 참석자 / 그룹', emoji: true },
+        element: {
+          type: 'multi_external_select' as const,
+          action_id: 'attendees_input',
+          placeholder: { type: 'plain_text' as const, text: '이름 또는 그룹명으로 검색', emoji: false },
+          min_query_length: 0,
+          ...(attendeeInitialOptions.length > 0 ? { initial_options: attendeeInitialOptions } : {}),
         },
       },
     ],

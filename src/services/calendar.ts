@@ -110,6 +110,12 @@ export async function createBooking(request: BookingRequest): Promise<string> {
           : []),
         ...attendees.map((a) => ({ email: a.email, displayName: a.name })),
       ],
+      conferenceData: {
+        createRequest: {
+          requestId: `slack-room-bot-${Date.now()}`,
+          conferenceSolutionKey: { type: 'hangoutsMeet' },
+        },
+      },
       extendedProperties: {
         private: {
           createdBy: 'slack-room-bot',
@@ -121,6 +127,7 @@ export async function createBooking(request: BookingRequest): Promise<string> {
     const insertParams = {
       calendarId: 'primary' as const,
       sendUpdates: 'all' as const,
+      conferenceDataVersion: 1 as const,
       requestBody: eventBody,
     };
 
@@ -630,14 +637,14 @@ export async function updateBooking(
 }
 
 /**
- * 정기회의 전체 시리즈 시간 수정
+ * 정기회의 전체 시리즈 수정 (시간, 이름, 회의실, 참석자)
  * withRoomLock으로 race condition 방지
- * 마스터 이벤트의 start/end를 패치하여 모든 인스턴스에 일괄 적용
+ * 마스터 이벤트를 패치하여 모든 인스턴스에 일괄 적용
  * DWD 인증 실패 시 admin fallback
  */
 export async function updateRecurringSeries(
   masterEventId: string,
-  updates: { startTime: Date; endTime: Date },
+  updates: { startTime: Date; endTime: Date; summary?: string; newRoomId?: string; attendees?: string[] },
   organizerEmail: string,
 ): Promise<void> {
   await withCalendarFallback(organizerEmail, async (calendar) => {
@@ -650,26 +657,59 @@ export async function updateRecurringSeries(
       throw new Error('이 이벤트는 정기회의가 아닙니다.');
     }
 
-    // 회의실 ID 추출하여 lock 적용
+    // 기존 회의실 ID 추출
     const roomAttendee = (existing.data.attendees ?? []).find(
       a => a.email?.endsWith('@resource.calendar.google.com'),
     );
-    const roomId = roomAttendee?.email ?? '';
+    const currentRoomId = roomAttendee?.email ?? '';
+    const targetRoomId = updates.newRoomId ?? currentRoomId;
+
+    const patch: Record<string, unknown> = {
+      start: { dateTime: updates.startTime.toISOString(), timeZone: env.google.timezone },
+      end: { dateTime: updates.endTime.toISOString(), timeZone: env.google.timezone },
+    };
+
+    if (updates.summary) {
+      patch['summary'] = updates.summary;
+    }
+
+    if (updates.attendees && updates.attendees.length > 0) {
+      const existingAttendees = existing.data.attendees ?? [];
+      patch['attendees'] = updates.attendees.map(email => {
+        if (email.endsWith('@resource.calendar.google.com')) {
+          return { email, resource: true };
+        }
+        const prev = existingAttendees.find(a => a.email === email);
+        if (prev?.responseStatus) {
+          return { email, responseStatus: prev.responseStatus };
+        }
+        return { email };
+      });
+    } else if (updates.newRoomId && updates.newRoomId !== currentRoomId) {
+      // 회의실만 변경: 기존 참석자에서 회의실 교체
+      const existingAttendees = existing.data.attendees ?? [];
+      const nonRoomAttendees = existingAttendees
+        .filter(a => !a.email?.endsWith('@resource.calendar.google.com'))
+        .map(a => ({
+          email: a.email ?? '',
+          ...(a.resource ? { resource: true as const } : {}),
+          ...(a.responseStatus ? { responseStatus: a.responseStatus } : {}),
+        }));
+      patch['attendees'] = [{ email: targetRoomId, resource: true }, ...nonRoomAttendees];
+    }
 
     const doPatch = async () => {
       await calendar.events.patch({
         calendarId: 'primary',
         eventId: masterEventId,
         sendUpdates: 'all',
-        requestBody: {
-          start: { dateTime: updates.startTime.toISOString(), timeZone: env.google.timezone },
-          end: { dateTime: updates.endTime.toISOString(), timeZone: env.google.timezone },
-        },
+        requestBody: patch,
       });
     };
 
-    if (roomId) {
-      await withRoomLock(roomId, doPatch);
+    const lockRoomId = targetRoomId || currentRoomId;
+    if (lockRoomId) {
+      await withRoomLock(lockRoomId, doPatch);
     } else {
       await doPatch();
     }

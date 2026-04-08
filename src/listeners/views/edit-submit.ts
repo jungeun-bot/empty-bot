@@ -440,7 +440,7 @@ export function registerEditSubmit(app: App): void {
     }
   });
 
-  // 6. 정기회의 전체 시간 변경 제출
+  // 6. 정기회의 전체 수정 제출 (이름, 회의실, 참석자, 시간)
   app.view('recurring_time_edit_submit', async ({ ack, view, body, client, logger }) => {
     await ack({ response_action: 'clear' });
     const meta = JSON.parse(view.private_metadata ?? '{}') as {
@@ -450,6 +450,8 @@ export function registerEditSubmit(app: App): void {
 
     try {
       const values = view.state.values;
+      const newTitleRaw = values['title_block']?.['title_input']?.value ?? '';
+      const newRoomId = values['room_block']?.['room_input']?.selected_option?.value ?? (meta.roomId ?? '');
       const startTimeStr = values['start_time_block']?.['start_time_input']?.value ?? '';
       const endTimeStr = values['end_time_block']?.['end_time_input']?.value ?? '';
 
@@ -464,7 +466,6 @@ export function registerEditSubmit(app: App): void {
         return;
       }
 
-      // 마스터 이벤트의 기존 날짜를 기준으로 시간만 변경
       const organizerEmail = await resolveUserEmail(client, body.user.id);
       const masterEventId = meta.recurringEventId ?? '';
 
@@ -487,14 +488,58 @@ export function registerEditSubmit(app: App): void {
       const newStartTime = parseDateTimeString(dateStr, validStart);
       const newEndTime = parseDateTimeString(dateStr, validEnd);
 
+      // 회의 이름: [RoomName] 접두어 재생성
+      const newRoom = getRoomById(newRoomId);
+      const titleWithoutPrefix = newTitleRaw.replace(/^\[.*?\]\s*/, '');
+      const finalSummary = newRoom ? `[${newRoom.name}] ${titleWithoutPrefix}` : titleWithoutPrefix;
+
+      // 참석자 파싱 (group: 접두어로 그룹/개인 구분)
+      const selectedOptions = values['attendees_block']?.['attendees_input']?.selected_options ?? [];
+      const groupSelections = selectedOptions.filter((opt: { value: string }) => opt.value.startsWith('group:'));
+      const userSelections = selectedOptions.filter((opt: { value: string }) => !opt.value.startsWith('group:'));
+
+      const groupEmails: string[] = [];
+      for (const group of groupSelections) {
+        const groupId = group.value.replace('group:', '');
+        try {
+          const membersResult = await client.usergroups.users.list({ usergroup: groupId });
+          const memberIds = membersResult.users ?? [];
+          const memberInfos = await Promise.all(
+            memberIds.map(async (uid: string) => {
+              try {
+                const info = await client.users.info({ user: uid });
+                return info.user?.profile?.email ?? '';
+              } catch { return ''; }
+            }),
+          );
+          for (const email of memberInfos) {
+            if (email) groupEmails.push(email);
+          }
+        } catch { /* 그룹 멤버 조회 실패 스킵 */ }
+      }
+
+      const individualEmails = userSelections.map((opt: { value: string }) => opt.value);
+
+      // 전체 참석자 리스트: 사람 + 회의실 + 예약자 + 관리자
+      const newPersonAttendees = [...new Set([...groupEmails, ...individualEmails])]
+        .filter(email => email && email !== organizerEmail);
+
+      const fullAttendees = [...new Set([...newPersonAttendees, newRoomId, organizerEmail, env.google.adminEmail])]
+        .filter(Boolean);
+
       await updateRecurringSeries(masterEventId, {
         startTime: newStartTime,
         endTime: newEndTime,
+        summary: finalSummary,
+        newRoomId,
+        attendees: fullAttendees,
       }, organizerEmail);
+
+      const attendeeNames = newPersonAttendees.length > 0 ? newPersonAttendees.join(', ') : '없음';
 
       await client.chat.postMessage({
         channel: channelId || body.user.id,
-        text: `✅ 정기회의 전체 시간이 변경되었습니다.\n*회의:* ${masterEvent.summary}\n*변경된 시간:* ${validStart} ~ ${validEnd}`,
+        text: `✅ 정기회의 전체 일정이 수정되었습니다.\n*회의:* ${finalSummary}\n*회의실:* ${newRoom?.name ?? ''}\n*시간:* ${validStart} ~ ${validEnd}\n*참석자:* ${attendeeNames}`,
         username: BOT_DISPLAY_NAME,
       });
     } catch (error) {
