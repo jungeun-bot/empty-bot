@@ -1,0 +1,22 @@
+services:
+  bot:
+    image: ghcr.io/${GITHUB_REPOSITORY:-slack-room-bot}:latest
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    volumes:
+      # 서비스 계정 JSON 키 파일 마운트 (GOOGLE_SERVICE_ACCOUNT_KEY_PATH 사용 시)
+      - ./service-account.json:/app/service-account.json:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
